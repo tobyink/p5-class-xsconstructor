@@ -50,9 +50,8 @@ static void
 xscon_initialize_object(char* const klass, SV* const object, HV* const args, bool const is_cloning) {
 
     assert(object);
-
     assert(args);
-    assert(SvTYPE(args) == SVt_PVHV);
+
     if(mg_find((SV*)args, PERL_MAGIC_tied)){
         croak("You cannot use tied HASH reference as initializing arguments");
     }
@@ -137,9 +136,7 @@ static void
 xscon_buildall(SV* const object, SV* const args) {
     
     assert(object);
-
     assert(args);
-    assert(SvTYPE(args) == SVt_PVHV);
 
     char* const klass = sv_reftype(SvRV(object), 1);
     HV* const stash = gv_stashpv(klass, 1);
