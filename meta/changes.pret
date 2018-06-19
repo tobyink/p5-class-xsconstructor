@@ -4,3 +4,9 @@
 	issued  2018-06-20;
 	label   "Initial release".
 
+`Class-XSConstructor 0.002 cpan:TOBYINK`
+	issued  2018-06-20;
+	changeset [
+		item "Fix some broken assertions in XS code."^^Bugfix;
+		item "Add SEE ALSO section."^^Documentation;
+	].
