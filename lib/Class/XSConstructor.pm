@@ -190,6 +190,8 @@ is I<your> responsibility.
 
 Supports Moose/Moo/Class::Tiny-style C<BUILD> methods.
 
+Including C<< __no_BUILD__ >>.
+
 =back
 
 =head1 CAVEATS
