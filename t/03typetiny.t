@@ -36,7 +36,7 @@ use Test::Requires { 'Types::Standard' => '1.000000' };
 {
 	package Employee;
 	use parent -norequire, qw(Person);
-	use Class::XSConstructor qw( employee_id! );	
+	use Class::XSConstructor qw( employee_id! );
 }
 
 # This is not part of the public API, but a simple way of

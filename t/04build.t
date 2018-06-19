@@ -34,7 +34,7 @@ my $x = "";
 {
 	package Employee;
 	use parent -norequire, qw(Person);
-	use Class::XSConstructor qw( employee_id! );	
+	use Class::XSConstructor qw( employee_id! );
 	sub BUILD { $x .= __PACKAGE__ . $_[1]{slug} }
 }
 

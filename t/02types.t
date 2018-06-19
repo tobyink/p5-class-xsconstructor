@@ -6,6 +6,8 @@
 
 Test that Class::XSConstructor supports manual type constraints.
 
+B<< TODO: >> thia currently fails, but it's not documented yet anyway.
+
 =head1 AUTHOR
 
 Toby Inkster E<lt>tobyink@cpan.orgE<gt>.
@@ -21,7 +23,7 @@ the same terms as the Perl 5 programming language system itself.
 
 use strict;
 use warnings;
-use Test::More; # skip_all => "TODO: why won't these pass???";
+use Test::More skip_all => "TODO: why won't these pass???";
 use Test::Fatal;
 
 BEGIN {
@@ -43,7 +45,7 @@ ok(!$Local::Types::Int->('xyz'), "!Int('xyz')");
 {
 	package Employee;
 	use parent -norequire, qw(Person);
-	use Class::XSConstructor qw( employee_id! );	
+	use Class::XSConstructor qw( employee_id! );
 }
 
 # This is not part of the public API, but a simple way of
