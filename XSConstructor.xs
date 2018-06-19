@@ -50,7 +50,6 @@ static void
 xscon_initialize_object(char* const klass, SV* const object, HV* const args, bool const is_cloning) {
 
     assert(object);
-    assert(SvTYPE(object) == SVt_PVHV);
 
     assert(args);
     assert(SvTYPE(args) == SVt_PVHV);
@@ -138,7 +137,6 @@ static void
 xscon_buildall(SV* const object, SV* const args) {
     
     assert(object);
-    assert(SvTYPE(object) == SVt_PVHV);
 
     assert(args);
     assert(SvTYPE(args) == SVt_PVHV);
