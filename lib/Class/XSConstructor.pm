@@ -6,7 +6,7 @@ use XSLoader ();
 package Class::XSConstructor;
 
 our $AUTHORITY = 'cpan:TOBYINK';
-our $VERSION   = '0.001';
+our $VERSION   = '0.002';
 
 use Exporter::Tiny 1.000000 qw( mkopt );
 use Ref::Util 0.100 qw( is_plain_arrayref is_plain_hashref is_blessed_ref is_coderef );
@@ -215,6 +215,8 @@ L<http://rt.cpan.org/Dist/Display.html?Queue=Class-XSConstructor>.
 
 =head1 SEE ALSO
 
+L<Class::Tiny>, L<Class::XSAccessor>.
+
 =head1 AUTHOR
 
 Toby Inkster E<lt>tobyink@cpan.orgE<gt>.
@@ -229,7 +231,6 @@ This software is copyright (c) 2018 by Toby Inkster.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
-
 
 =head1 DISCLAIMER OF WARRANTIES
 
