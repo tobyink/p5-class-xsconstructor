@@ -10,3 +10,9 @@
 		item "Fix some broken assertions in XS code."^^Bugfix;
 		item "Add SEE ALSO section."^^Documentation;
 	].
+
+`Class-XSConstructor 0.003 cpan:TOBYINK`
+	issued  2018-06-20;
+	changeset [
+		item "Add dep on MRO::Compat for Perl 5.8."^^Packaging;
+	].
