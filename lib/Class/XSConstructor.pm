@@ -219,6 +219,10 @@ L<http://rt.cpan.org/Dist/Display.html?Queue=Class-XSConstructor>.
 
 Toby Inkster E<lt>tobyink@cpan.orgE<gt>.
 
+=head1 THANKS
+
+To everybody in I<< #xs >> on irc.perl.org.
+
 =head1 COPYRIGHT AND LICENCE
 
 This software is copyright (c) 2018 by Toby Inkster.
