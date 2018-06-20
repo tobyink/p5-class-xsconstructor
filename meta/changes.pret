@@ -29,3 +29,12 @@
 		item "Fix support for Perl 5.8."^^Bugfix;
 	].
 
+`Class-XSConstructor 0.006 cpan:TOBYINK`
+	issued  2018-06-20;
+	changeset [
+		item "Fix a bunch of XS compilation warnings."^^Bugfix;
+		item "Fix buggy implementation of type constraints."^^Bugfix;
+		item "Document support for coderef type constraints."^^Documentation;
+		item "XS stuff now works in threaded perls."^^Bugfix;
+	].
+
