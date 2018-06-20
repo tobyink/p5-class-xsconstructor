@@ -3,16 +3,16 @@
 @prefix : <http://ontologi.es/doap-deps#>.
 
 `Class-XSConstructor`
-	:build-requirement      [ :on "Devel::PPPort"^^:CpanId ];
-	:runtime-requirement    [ :on "perl 5.008009"^^:CpanId ];
-	:runtime-requirement    [ :on "Exporter::Tiny 1.000000"^^:CpanId ];
-	:runtime-requirement    [ :on "Ref::Util 0.100"^^:CpanId ];
-	:runtime-requirement    [ :on "List::Util 1.45"^^:CpanId ];
-	:test-requirement       [ :on "Test::More 0.96"^^:CpanId ];
-	:test-requirement       [ :on "Test::Fatal"^^:CpanId ];
-	:test-requirement       [ :on "Test::Requires"^^:CpanId ];
-	:test-requirement       [ :on "parent"^^:CpanId ];
-	:test-recommendation    [ :on "Types::Standard 1.000000"^^:CpanId ];
-	:develop-recommendation [ :on "Dist::Inkt 0.001"^^:CpanId ];
+	:configure-recommendation  [ :on "Devel::PPPort 3.42"^^:CpanId ];
+	:runtime-requirement       [ :on "perl 5.008009"^^:CpanId ];
+	:runtime-requirement       [ :on "Exporter::Tiny 1.000000"^^:CpanId ];
+	:runtime-requirement       [ :on "Ref::Util 0.100"^^:CpanId ];
+	:runtime-requirement       [ :on "List::Util 1.45"^^:CpanId ];
+	:test-requirement          [ :on "Test::More 0.96"^^:CpanId ];
+	:test-requirement          [ :on "Test::Fatal"^^:CpanId ];
+	:test-requirement          [ :on "Test::Requires"^^:CpanId ];
+	:test-requirement          [ :on "parent"^^:CpanId ];
+	:test-recommendation       [ :on "Types::Standard 1.000000"^^:CpanId ];
+	:develop-recommendation    [ :on "Dist::Inkt 0.001"^^:CpanId ];
 	.
 
