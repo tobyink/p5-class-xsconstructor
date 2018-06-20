@@ -3,6 +3,7 @@
 @prefix : <http://ontologi.es/doap-deps#>.
 
 `Class-XSConstructor`
+	:build-requirement      [ :on "Devel::PPPort"^^:CpanId ];
 	:runtime-requirement    [ :on "perl 5.008009"^^:CpanId ];
 	:runtime-requirement    [ :on "Exporter::Tiny 1.000000"^^:CpanId ];
 	:runtime-requirement    [ :on "Ref::Util 0.100"^^:CpanId ];
