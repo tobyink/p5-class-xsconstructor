@@ -9,7 +9,7 @@
 #define XSCON_xc_stash(a)       ( (HV*)XSCON_av_at((a), XSCON_XC_STASH) )
 
 static HV*
-xscon_buildargs(char* const klass, I32 ax, I32 items) {
+xscon_buildargs(const char* klass, I32 ax, I32 items) {
     dTHX;
     HV* args;
 
@@ -42,7 +42,7 @@ xscon_buildargs(char* const klass, I32 ax, I32 items) {
 }
 
 static SV*
-xscon_create_instance(char* const klass) {
+xscon_create_instance(const char* klass) {
     dTHX;
     SV* instance;
     instance = sv_bless( newRV_noinc((SV*)newHV()), gv_stashpv(klass, 1) );
@@ -50,7 +50,7 @@ xscon_create_instance(char* const klass) {
 }
 
 static void
-xscon_initialize_object(char* const klass, SV* const object, HV* const args, bool const is_cloning) {
+xscon_initialize_object(const char* klass, SV* const object, HV* const args, bool const is_cloning) {
     dTHX;
 
     assert(object);
@@ -67,7 +67,7 @@ xscon_initialize_object(char* const klass, SV* const object, HV* const args, boo
     SV* attr;
     SV** tmp;
     char* keyname;
-    I32 keylen;
+    STRLEN keylen;
 
     /* find out allowed attributes */
     SV** const HAS_globref = hv_fetch(stash, "__XSCON_HAS", 11, 0);
@@ -143,7 +143,7 @@ xscon_buildall(SV* const object, SV* const args) {
     assert(object);
     assert(args);
 
-    char* const klass = sv_reftype(SvRV(object), 1);
+    const char* klass = sv_reftype(SvRV(object), 1);
     HV* const stash = gv_stashpv(klass, 1);
     assert(stash != NULL);
     
@@ -184,7 +184,7 @@ xscon_buildall(SV* const object, SV* const args) {
         }
     }
 
-    AV* const builds = SvRV(buildall);
+    AV* const builds = (AV*)SvRV(buildall);
     I32 const len = av_len(builds) + 1;
     SV** tmp;
     SV* build;
@@ -217,10 +217,10 @@ void
 new_object(SV* klass, ...)
 CODE:
 {
-    char* klassname;
+    const char* klassname;
     SV* args;
     SV* object;
-    
+
     klassname = SvROK(klass) ? sv_reftype(SvRV(klass), 1) : SvPV_nolen_const(klass);
     args = newRV_inc((SV*)xscon_buildargs(klassname, ax, items));
     sv_2mortal(args);
