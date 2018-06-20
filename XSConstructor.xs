@@ -1,3 +1,4 @@
+#define PERL_NO_GET_CONTEXT     /* we want efficiency */
 #include "xshelper.h"
 
 #define IsObject(sv)   (SvROK(sv) && SvOBJECT(SvRV(sv)))
@@ -9,6 +10,7 @@
 
 static HV*
 xscon_buildargs(char* const klass, I32 ax, I32 items) {
+    dTHX;
     HV* args;
 
     /* shift @_ */
@@ -39,8 +41,9 @@ xscon_buildargs(char* const klass, I32 ax, I32 items) {
     return args;
 }
 
-SV*
+static SV*
 xscon_create_instance(char* const klass) {
+    dTHX;
     SV* instance;
     instance = sv_bless( newRV_noinc((SV*)newHV()), gv_stashpv(klass, 1) );
     return sv_2mortal(instance);
@@ -48,6 +51,7 @@ xscon_create_instance(char* const klass) {
 
 static void
 xscon_initialize_object(char* const klass, SV* const object, HV* const args, bool const is_cloning) {
+    dTHX;
 
     assert(object);
     assert(args);
@@ -134,6 +138,7 @@ xscon_initialize_object(char* const klass, SV* const object, HV* const args, boo
 
 static void
 xscon_buildall(SV* const object, SV* const args) {
+    dTHX;
     
     assert(object);
     assert(args);
