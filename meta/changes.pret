@@ -16,3 +16,16 @@
 	changeset [
 		item "Add dep on MRO::Compat for Perl 5.8."^^Packaging;
 	].
+
+`Class-XSConstructor 0.004 cpan:TOBYINK`
+	issued  2018-06-20;
+	changeset [
+		item "Fix more broken assertions in XS code."^^Bugfix;
+	].
+
+`Class-XSConstructor 0.005 cpan:TOBYINK`
+	issued  2018-06-20;
+	changeset [
+		item "Fix support for Perl 5.8."^^Bugfix;
+	].
+
