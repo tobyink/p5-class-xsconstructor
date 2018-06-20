@@ -182,9 +182,21 @@ Provides support for type constraints.
     "phone"    => Str,
   );
 
+Type constraints can also be provided as coderefs returning a boolean:
+
+  use Types::Standard qw(Str Int);
+  use Class::XSConstructor (
+    "name!"    => Str,
+    "age"      => Int,
+    "email"    => sub { !ref($_[0]) and $_[0] =~ /\@/ },
+    "phone"    => Str,
+  );
+
+Type constraints are likely to siginificantly slow down your constructor.
+
 Note that Class::XSConstructor is only building your constructor for you.
-For read-write attributes, checking the type constraint in the accessor
-is I<your> responsibility.
+For read-write attributes, I<< checking the type constraint in the accessor
+is your responsibility >>.
 
 =item *
 

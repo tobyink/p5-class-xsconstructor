@@ -23,7 +23,7 @@ the same terms as the Perl 5 programming language system itself.
 
 use strict;
 use warnings;
-use Test::More skip_all => "TODO: why won't these pass???";
+use Test::More;# skip_all => "TODO: why won't these pass???";
 use Test::Fatal;
 
 BEGIN {

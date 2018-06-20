@@ -105,13 +105,14 @@ xscon_initialize_object(const char* klass, SV* const object, HV* const args, boo
                 PUTBACK;
                 count  = call_sv(*check, G_SCALAR);
                 result = POPs;
-                PUTBACK;
-                FREETMPS;
-                LEAVE;
 
                 if (!SvTRUE(result)) {
                     croak("Value '%s' failed type constraint for '%s'", SvPV_nolen(val2), keyname);
                 }
+                
+                PUTBACK;
+                FREETMPS;
+                LEAVE;
             }
             
             (void)hv_store((HV *)SvRV(object), keyname, keylen, val2, 0);
