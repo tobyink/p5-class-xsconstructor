@@ -16,7 +16,13 @@ sub import {
 	my $class  = shift;
 	my $caller = our($SETUP_FOR) || caller;
 	
-	install_constructor("$caller\::new");
+	if (our $REDEFINE) {
+		no warnings 'redefine';
+		install_constructor("$caller\::new");
+	}
+	else {
+		install_constructor("$caller\::new");
+	}
 	inheritance_stuff($caller);
 	
 	my ($HAS, $REQUIRED, $ISA, $BUILDALL) = get_vars($caller);
