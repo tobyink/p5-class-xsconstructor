@@ -38,3 +38,11 @@
 		item "XS stuff now works in threaded perls."^^Bugfix;
 	].
 
+`Class-XSConstructor 0.007 cpan:TOBYINK`
+	issued  2018-06-20;
+	changeset [
+		item "Allow installation on Perl 5.8.1."^^Packaging;
+		item "Devel::PPPort should be a configure recommentation, not a build requirement."^^Packaging;
+		item "$Class::XSConstructor::REDEFINE to allow an existing `new` to be redefined without a warning."^^Addition;
+	].
+
