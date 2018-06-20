@@ -4,6 +4,7 @@ if ($ENV{EXTENDED_TESTING}) {
 	$meta->{prereqs}{test}{requires}{'Types::Standard'} = '1.002000';
 }
 
-if (eval { require Devel::PPPort }) {
+# Only overwrite bundled version of ppport.h if newer than 3.42.
+if (eval "use Devel::PPPort 3.42; 1") {
 	Devel::PPPort::WriteFile();
 }
