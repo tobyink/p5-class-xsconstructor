@@ -46,3 +46,10 @@
 		item "$Class::XSConstructor::REDEFINE to allow an existing `new` to be redefined without a warning."^^Addition;
 	].
 
+`Class-XSConstructor 0.008 cpan:TOBYINK`
+	issued  2018-06-21;
+	changeset [
+		item "Perl 5.8.1 support didn't work; change required version of Perl to 5.8.8."^^Packaging;
+		item "Don't use old versions of Devel::PPPort."^^Packaging;
+	].
+
