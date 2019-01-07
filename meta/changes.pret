@@ -53,3 +53,9 @@
 		item "Don't use old versions of Devel::PPPort."^^Packaging;
 	].
 
+`Class-XSConstructor 0.009 cpan:TOBYINK`
+	issued  2019-01-07;
+	changeset [
+		item "Add tests for Type::Nano support."^^Tests;
+	].
+
