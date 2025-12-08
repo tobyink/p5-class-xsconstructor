@@ -42,7 +42,7 @@
 	issued  2018-06-20;
 	changeset [
 		item "Allow installation on Perl 5.8.1."^^Packaging;
-		item "Devel::PPPort should be a configure recommentation, not a build requirement."^^Packaging;
+		item "Devel::PPPort should be a configure recommendation, not a build requirement."^^Packaging;
 		item "$Class::XSConstructor::REDEFINE to allow an existing `new` to be redefined without a warning."^^Addition;
 	].
 
@@ -57,5 +57,12 @@
 	issued  2019-01-07;
 	changeset [
 		item "Add tests for Type::Nano support."^^Tests;
+	].
+
+`Class-XSConstructor 0.010 cpan:TOBYINK`
+	issued  2025-12-08;
+	changeset [
+		item "Allow MooseX::StrictConstructor-style constructors to be built; which reject unknown parameters."^^Addition;
+		item "Minor improvements to API."^^Change;
 	].
 
