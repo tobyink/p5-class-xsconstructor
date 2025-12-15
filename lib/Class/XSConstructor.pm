@@ -596,6 +596,8 @@ package variables with the prefix C<< Foo::__XSCON_ >>.
 The only supported use of these variables that you may need to be aware of
 is:
 
+=over
+
 =item C<< $Foo::__XSCON_BUILD >>
 
 If set to "0", indicates that XSConstructor should not try to call
