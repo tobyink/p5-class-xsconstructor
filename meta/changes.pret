@@ -75,3 +75,9 @@
 		item "Support defaults."^^Addition;
 		item "Remove a lot of the documentation for internals. Some was out of date. You don't need to know about them anyway."^^Documentation;
 	].
+
+`Class-XSConstructor 0.012 cpan:TOBYINK`
+	issued  2025-12-15;
+	changeset [
+		item "Fix for import method."^^Bugfix;
+	].
