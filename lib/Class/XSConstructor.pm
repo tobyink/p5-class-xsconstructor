@@ -69,13 +69,13 @@ sub import {
 		}
 		
 		if (is_blessed_ref($spec{isa}) and $spec{isa}->can('compiled_check')) {
-			$type = $thing;
+			$type = $spec{isa};
 			$spec{isa} = $type->compiled_check;
 		}
 		elsif (is_blessed_ref($spec{isa}) and $spec{isa}->can('check')) {
 			# Support it for compatibility with more basic Type::API::Constraint
 			# implementations, but this will be slowwwwww!
-			$type = $thing;
+			$type = $spec{isa};
 			$spec{isa} = sub { !! $type->check($_[0]) };
 		}
 		
