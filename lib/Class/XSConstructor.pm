@@ -586,68 +586,15 @@ you don't need to do this.
 
 Returns nothing.
 
-=item C<< Class::XSConstructor::inheritance_stuff($classname) >>
-
-Checks the C<< @ISA >> variable in the class and makes Class::XSConstructor
-aware of any attributes declared by parent classes. (Though only if those
-parent classes use Class::XSConstructor.)
-
-This is automatically done as part of C<import>, so if you're using C<import>,
-you don't need to do this.
-
-Returns nothing.
-
-=item C<< ($ar_has, $ar_required, $hr_isa, $sr_build, $sr_strict) = Class::XSConstructor::get_vars($classname) >>
-
-Returns references to the variables where Class::XSConstructor stores its
-configuration for the class.
-
-See L</Use of Package Variables>.
-
-=item C<< Class::XSConstructor::populate_build($classname) >>
-
-This will need to be called if the list of C<BUILD> methods that ought to be
-called when constructing an object of the given class changes at runtime.
-(Which would be pretty unusual.)
-
-Returns nothing.
-
 =back
 
 =head2 Use of Package Variables
 
-Class::XSConstructor stores its configuration for class Foo in the following
-global variables:
+Class::XSConstructor stores its configuration for class Foo in a bunch of
+package variables with the prefix C<< Foo::__XSCON_ >>.
 
-=over
-
-=item C<< @Foo::__XSCON_HAS >>
-
-A list of all attributes which the constructor should accept (both required
-and optional), including attributes defined by parent classes.
-
-C<inheritance_stuff> will automatically populate this from parent classes,
-and C<import> (which calls C<inheritance_stuff>) will populate it based on
-C<< @optlist >>.
-
-=item C<< @Foo::__XSCON_REQUIRED >>
-
-A list of all attributes which the constructor should require, including
-attributes defined by parent classes.
-
-C<inheritance_stuff> will automatically populate this from parent classes,
-and C<import> (which calls C<inheritance_stuff>) will populate it based on
-C<< @optlist >>.
-
-=item C<< %Foo::__XSCON_ISA >>
-
-A map of attributes to type constraint coderefs, including attributes
-defined by parent classes. Type constraints must be coderefs, not
-L<Type::Tiny> objects.
-
-C<inheritance_stuff> will automatically populate this from parent classes,
-and C<import> (which calls C<inheritance_stuff>) will populate it based on
-C<< @optlist >>, including converting type constraint objects to coderefs.
+The only supported use of these variables that you may need to be aware of
+is:
 
 =item C<< $Foo::__XSCON_BUILD >>
 
@@ -665,31 +612,13 @@ called.
 
 Any other value is invalid.
 
-C<import> will set this to undef.
-
 =item C<< $Foo::__XSCON_STRICT >>
 
 If set to true, indicates that XSConstructor should use a "strict"
 constructor, which complains about the presence of any unrecognized
 keys in the init args hashref.
 
-C<import> will set this to false by default, but set it to true if it
-sees "!!" in C<< @optlist >>.
-
 =back
-
-If these package variables have not been declared, there is a very good
-chance that the constructor will segfault. C<import> will automatically
-declare and populate them for you. C<get_vars> will declare them and
-return a list of references to them.
-
-Although you I<can> set up Class::XSConstructor by fiddling with these
-package variables and then installing the constructor sub, it will
-probably be easier to use C<import>. For L<MooX::XSConstructor>, even
-though I'm obviously intimately familiar with the internals of
-Class::XSConstructor, I just translate the Moo attribute definitions
-into something suitable for C<< @optlist >>, set C<< $SETUP_FOR >>, then
-call C<import>.
 
 =head1 CAVEATS
 

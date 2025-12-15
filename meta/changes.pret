@@ -73,4 +73,5 @@
 		item "Support type coercions."^^Addition;
 		item "Support builders."^^Addition;
 		item "Support defaults."^^Addition;
+		item "Remove a lot of the documentation for internals. Some was out of date. You don't need to know about them anyway."^^Documentation;
 	].
