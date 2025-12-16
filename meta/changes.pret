@@ -69,7 +69,7 @@
 `Class-XSConstructor 0.011 cpan:TOBYINK`
 	issued  2025-12-15;
 	changeset [
-		item "Allow non-Class::XSConstructor classes to inherit constructors from Class::XSConstructor without segfaulting."^^Bugfix;
+		item "Allow non-Class::XSConstructor classes to inherit constructors from Class::XSConstructor classes without segfaulting."^^Bugfix;
 		item "Support type coercions."^^Addition;
 		item "Support builders."^^Addition;
 		item "Support defaults."^^Addition;
@@ -80,4 +80,12 @@
 	issued  2025-12-15;
 	changeset [
 		item "Fix for import method."^^Bugfix;
+	].
+
+`Class-XSConstructor 0.013 cpan:TOBYINK`
+	issued  2025-12-16;
+	changeset [
+		item "Fix calling of BUILD methods which was broken on non-Class::XSConstructor classes that inherited from Class::XSConstructor classes."^^Bugfix;
+		item "Remove further documentation of internals."^^Documentation;
+		item "Certain common Types::Common types are now internally recognized and a fast C function is called to validate them instead of needing to call a coderef."^^Change;
 	].
