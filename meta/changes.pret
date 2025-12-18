@@ -89,3 +89,12 @@
 		item "Remove further documentation of internals."^^Documentation;
 		item "Certain common Types::Common types are now internally recognized and a fast C function is called to validate them instead of needing to call a coderef."^^Change;
 	].
+
+`Class-XSConstructor 0.014000 cpan:TOBYINK`
+	issued  2025-12-18;
+	changeset [
+		item "Support threaded Perls."^^Bugfix;
+		item "No longer use Ref::Util: use Types::Standard if it's installed or Perl's ref() builtin otherwise."^^Change;
+		item "Switch to 6 decimal place version numbers."^^Packaging;
+		item "Class::XSDestructor."^^Addition;
+	].
