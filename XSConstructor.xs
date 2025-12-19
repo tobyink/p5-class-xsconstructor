@@ -392,17 +392,17 @@ xscon_initialize_object(const char* pkg, const char* klass, SV* const object, HV
         
         SV** valref;
         SV* val;
-        bool has_value = false;
+        bool has_value = FALSE;
         
         if (hv_exists(args, keyname, keylen)) {
             // Value provided in args hash
             valref = hv_fetch(args, keyname, keylen, 0);
             val = newSVsv(*valref);
-            has_value = true;
+            has_value = TRUE;
         }
         else if ( flags & 8 ) {
             // There is a default/builder
-            has_value = true;
+            has_value = TRUE;
             // Some very common defaults are worth hardcoding into the flags
             // so we won't even need to do a hash lookup to find the default
             // value.
@@ -489,7 +489,7 @@ xscon_initialize_object(const char* pkg, const char* klass, SV* const object, HV
                         }
                     }
                     else {
-                        has_value = false;
+                        has_value = FALSE;
                         if ( flags & 1 ) {
                             croak("Attribute '%s' is required", keyname);
                         }

@@ -6,7 +6,7 @@ use XSLoader ();
 package Class::XSConstructor;
 
 our $AUTHORITY = 'cpan:TOBYINK';
-our $VERSION   = '0.014000';
+our $VERSION   = '0.014001';
 
 use Exporter::Tiny 1.000000 qw( mkopt _croak );
 use List::Util 1.45 qw( uniq );

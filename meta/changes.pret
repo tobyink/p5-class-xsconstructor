@@ -98,3 +98,10 @@
 		item "Switch to 6 decimal place version numbers."^^Packaging;
 		item "Class::XSDestructor."^^Addition;
 	].
+
+`Class-XSConstructor 0.014001 cpan:TOBYINK`
+	issued  2025-12-19;
+	changeset [
+		item "Consistently use uppercase for TRUE/FALSE as it seems lowercase versions of these constants are not defined on all platforms."^^Bugfix;
+		item "Update distribution metadata to point to correct bug tracker."^^Packaging;
+	].
