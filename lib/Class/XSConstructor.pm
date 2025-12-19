@@ -437,7 +437,7 @@ __END__
 
 =head1 NAME
 
-Class::XSConstructor - a super-fast (but limited) constructor in XS
+Class::XSConstructor - a super-fast constructor in XS
 
 =head1 SYNOPSIS
 
@@ -581,7 +581,7 @@ listed above.
 
 =back
 
-So for example, a type check for B<< ArrayRef[PositiveOrZeroInt >> should
+So for example, a type check for B<< ArrayRef[PositiveOrZeroInt] >> should
 be very fast.
 
 When multiple attributes fail their type check, the constructor will only
@@ -610,6 +610,36 @@ Otherwise:
   }
 
 Type coercions are likely to siginificantly slow down your constructor.
+
+=item *
+
+Supports C<init_arg> like L<Moose> and L<Moo>.
+
+  use Class::XSConstructor 'name' => { init_arg => 'moniker' };
+  
+  my $obj = __PACKAGE__->new( moniker => 'Bob' );
+  say $obj->{name};  # ==> "Bob"
+
+=item *
+
+Supports C<trigger>, which may be a method name or a coderef. Triggers
+are only fired when the attribute is passed to the constructor explicitly.
+Defaults and builders do not trigger the trigger.
+
+=item *
+
+Supports C<weak_ref> like L<Moose> and L<Moo>.
+
+  use Class::XSConstructor 'thing' => { weak_ref => !!1 };
+  
+  my $array  = [];
+  my $object = __PACKAGE__->new( thing => $array );
+  
+  defined $object->{thing} or die;  # lives
+  
+  undef $array;
+  
+  defined $object->{thing} or die;  # dies
 
 =item *
 
@@ -753,6 +783,33 @@ An easy way to do this is to use L<parent> before using Class::XSConstructor.
     use Class::XSConstructor qw( employee_id! );
     use Class::XSAccessor { getters => [qw(employee_id)] };
   }
+
+Using any of the following features means that your fast XS constructor
+will be calling your own coderefs, which are presumably written in Perl
+and thus not so fast. This can slow down your constructor significantly:
+
+=over
+
+=item *
+
+Builders and defaults, except for the eight specially optimized default values.
+
+=item *
+
+Triggers.
+
+=item *
+
+Type constraints (except for the specially optimized ones) and type coercions.
+
+=item *
+
+Defining any C<BUILD> methods or inheriting from classes which do.
+
+=back
+
+These can all be useful features of course, but if speed is critical, consider
+looking at ways to eliminate them.
 
 =head1 SEE ALSO
 
