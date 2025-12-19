@@ -105,3 +105,13 @@
 		item "Consistently use uppercase for TRUE/FALSE as it seems lowercase versions of these constants are not defined on all platforms."^^Bugfix;
 		item "Update distribution metadata to point to correct bug tracker."^^Packaging;
 	].
+
+`Class-XSConstructor 0.015000 cpan:TOBYINK`
+	issued  2025-12-19;
+	changeset [
+		item "Support `init_arg`."^^Addition;
+		item "Support `trigger`."^^Addition;
+		item "Support `weak_ref`."^^Addition;
+		item "More use of constants instead of weird hard-coded numbers everywhere."^^Change;
+		item "Some minor cleanups of the code."^^Change;
+	].

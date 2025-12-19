@@ -9,7 +9,7 @@ use List::Util 1.45 qw( uniq );
 
 BEGIN {
 	our $AUTHORITY = 'cpan:TOBYINK';
-	our $VERSION   = '0.014001';
+	our $VERSION   = '0.015000';
 	
 	if ( eval { require Types::Standard; 1 } ) {
 		Types::Standard->import(
