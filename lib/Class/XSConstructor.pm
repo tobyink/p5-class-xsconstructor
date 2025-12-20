@@ -131,6 +131,13 @@ sub import {
 		$INIT_ARGS->{$name} = $spec{init_arg} if exists $spec{init_arg};
 		$TRIGGERS->{$name} = $spec{trigger} if $spec{trigger};
 	}
+	
+	my %allow = map {
+		( $FLAGS->{$_} & XSCON_FLAG_NO_INIT_ARG )  ? () :
+		( $FLAGS->{$_} & XSCON_FLAG_HAS_INIT_ARG ) ? ( $INIT_ARGS->{$_} => 1 ) :
+		( $_ => 1 );
+	} @$HAS;
+	@{ fetch_vars( $package, qw/@ALLOW/ ) } = sort keys %allow;
 }
 
 sub _canonicalize_defaults {
