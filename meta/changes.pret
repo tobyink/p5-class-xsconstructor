@@ -127,3 +127,9 @@
 	changeset [
 		item "Fix interplay between init_args and strict constructors."^^Bugfix;
 	].
+
+`Class-XSConstructor 0.015003 cpan:TOBYINK`
+	issued  2025-12-23;
+	changeset [
+		item "Small optmizations."^^Change;
+	].
