@@ -358,6 +358,8 @@ xscon_destructor_create(char *packagename) {
 void
 xscon_constructor_free(xscon_constructor_t *sig)
 {
+    dTHX;
+
     if (sig->params) {
         for (I32 i = 0; i < sig->num_params; i++) {
             xscon_param_t *p = &sig->params[i];
@@ -392,6 +394,8 @@ xscon_constructor_free(xscon_constructor_t *sig)
 void
 xscon_destructor_free(xscon_destructor_t *sig)
 {
+    dTHX;
+
     if (sig->demolish_methods) {
         for (I32 i = 0; i < sig->num_demolish_methods; i++) {
             if (sig->demolish_methods[i]) {
@@ -731,6 +735,8 @@ xscon_check_type(char* keyname, SV* const val, int flags, CV* check_cv)
 SV*
 xscon_run_default(SV *object, char* keyname, int has_common_default, SV *default_sv)
 {
+    dTHX;
+
     switch ( has_common_default ) {
 
         // Undef
