@@ -145,3 +145,9 @@
 		item "Class::XSDelegation."^^Addition;
 		item "Undocumented function Class::XSConstructor::install_reader()."^^Addition;
 	].
+
+`Class-XSConstructor 0.016001 cpan:TOBYINK`
+	issued  2026-01-07;
+	changeset [
+		item "Avoid av_count as older Perl doesn't support it."^^Bugfix;
+	].

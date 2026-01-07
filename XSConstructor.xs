@@ -192,7 +192,7 @@ xscon_constructor_create(SV *sig_sv) {
         }
 
         AV *aav = (AV *)SvRV(*svp);
-        I32 na = av_count(aav);
+        I32 na = av_len(aav) + 1;
         sig->num_allow = na;
         Newxz(sig->allow, na, char *);
         for (I32 j = 0; j < na; j++) {
@@ -212,7 +212,7 @@ xscon_constructor_create(SV *sig_sv) {
     AV *params_av = (AV *)SvRV(*svp);
 
     /* Allocate the params array */
-    I32 num_params = av_count(params_av);
+    I32 num_params = av_len(params_av) + 1;
     sig->num_params = num_params;
     Newxz(sig->params, num_params, xscon_param_t);
 
@@ -258,7 +258,7 @@ xscon_constructor_create(SV *sig_sv) {
             }
 
             AV *aav = (AV *)SvRV(*svp);
-            I32 na = av_count(aav);
+            I32 na = av_len(aav) + 1;
             p->num_aliases = na;
             Newxz(p->aliases, na, char *);
             for (I32 j = 0; j < na; j++) {
@@ -1517,7 +1517,7 @@ CODE:
     
     /* add curried arguments */
     if ( sig->has_curried ) {
-        I32 n = av_count(sig->curried);
+        I32 n = av_len(sig->curried) + 1;
         for (I32 i = 0; i < n; i++) {
             SV **svp = av_fetch(sig->curried, i, 0);
             XPUSHs( svp ? *svp : &PL_sv_undef );
