@@ -133,3 +133,15 @@
 	changeset [
 		item "Small optmizations."^^Change;
 	].
+
+`Class-XSConstructor 0.016000 cpan:TOBYINK`
+	issued  2026-01-07;
+	changeset [
+		item "Rearrange where most of the constructor metadata is stored to simplify things."^^Change;
+		item "The first time a constructor or destructor is called, the metadata for the method will be copied from Perl space into a C struct making it much faster to access from XS as there is no longer a need to look things up in stashes, worry about magic, etc."^^Change;
+		item "Support for alias."^^Addition;
+		item "Update benchmarks as we are now significantly faster than Mouse::XS."^^Documentation;
+		item "Update copyright dates."^^Documentation;
+		item "Class::XSDelegation."^^Addition;
+		item "Undocumented function Class::XSConstructor::install_reader()."^^Addition;
+	].
