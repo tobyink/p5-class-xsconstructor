@@ -151,3 +151,9 @@
 	changeset [
 		item "Avoid av_count as older Perl doesn't support it."^^Bugfix;
 	].
+
+`Class-XSConstructor 0.016002 cpan:TOBYINK`
+	issued  2026-01-08;
+	changeset [
+		item "Faster strict constructor checks."^^Change;
+	].
