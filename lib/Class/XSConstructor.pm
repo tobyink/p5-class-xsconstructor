@@ -42,6 +42,9 @@ sub import {
 	$package    ||= our($SETUP_FOR) || caller;
 	$methodname ||= 'new';
 	
+	$META{$package} ||= { package => $package };
+	inheritance_stuff($package);
+	
 	if (our $REDEFINE) {
 		no warnings 'redefine';
 		install_constructor("$package\::$methodname");
@@ -49,9 +52,6 @@ sub import {
 	else {
 		install_constructor("$package\::$methodname");
 	}
-	
-	$META{$package} ||= { package => $package };
-	inheritance_stuff($package);
 	
 	do {
 		no strict 'refs';
@@ -370,12 +370,23 @@ sub inheritance_stuff {
 	
 	require( $] >= 5.010 ? "mro.pm" : "MRO/Compat.pm" );
 	
-	my @isa = reverse @{ mro::get_linear_isa($package) };
-	pop @isa;  # discard $package itself
+	my @isa = @{ mro::get_linear_isa($package) };
+	shift @isa;  # discard $package itself
 	return unless @isa;
 	
-	my @attrs;
 	for my $parent ( @isa ) {
+		no strict 'refs';
+		if ( defined &{"${parent}::new"} ) {
+			if ( not $META{$parent} ) {
+				# We are inheriting from a foreign class.
+				$META{$package}{foreignconstructor} = \&{"${parent}::new"};
+			}
+			last;
+		}
+	}
+	
+	my @attrs;
+	for my $parent ( reverse @isa ) {
 		my $p_attrs = $META{$parent}{params} or next;
 		push @attrs, @$p_attrs;
 	}
@@ -438,6 +449,8 @@ sub populate_build {
 
 sub get_metadata {
 	my $klass = ref($_[0]) || $_[0];
+	$META{$klass}{buildargs}        = $klass->can('BUILDARGS');
+	$META{$klass}{foreignbuildargs} = $klass->can('FOREIGNBUILDARGS') if $META{$klass}{foreignconstructor};
 	return $META{$klass};
 }
 
