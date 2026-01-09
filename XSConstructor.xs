@@ -536,7 +536,7 @@ xscon_foreignbuildargs(const xscon_constructor_t* sig, const char* klass, I32 ax
     }
     PUTBACK;
 
-    I32 count = call_sv((SV *)sig->foreignbuildargs_cv, G_LIST);
+    I32 count = call_sv((SV *)sig->foreignbuildargs_cv, G_ARRAY);
 
     SPAGAIN;
 
