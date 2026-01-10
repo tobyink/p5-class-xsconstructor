@@ -715,7 +715,8 @@ Supports C<weak_ref> like L<Moose> and L<Moo>.
 
 =item *
 
-Supports Moose/Moo/Class::Tiny-style C<BUILD> methods.
+Supports Moose/Moo/Class::Tiny-style C<BUILD>, C<BUILDALL>, C<BUILDARGS>,
+and C<FOREIGNBUILDARGS> methods.
 
 Including C<< __no_BUILD__ >>.
 
