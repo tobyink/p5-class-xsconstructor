@@ -38,6 +38,7 @@ enum {
     XSCON_FLAG_HAS_TRIGGER          =   64,
     XSCON_FLAG_WEAKEN               =  128,
     XSCON_FLAG_HAS_ALIASES          =  256,
+    XSCON_FLAG_HAS_SLOT_INITIALIZER =  512,
 
     XSCON_BITSHIFT_DEFAULTS         =   16,
     XSCON_BITSHIFT_TYPES            =   24,
@@ -77,6 +78,7 @@ typedef struct {
     SV     *trigger_sv;
     CV     *check_cv;
     CV     *coercion_cv;
+    CV     *slot_initializer_cv;
 } xscon_param_t;
 
 typedef struct {
@@ -339,6 +341,16 @@ xscon_constructor_create(SV *sig_sv) {
         }
         else {
             p->coercion_cv = NULL;
+        }
+
+        svp = hv_fetchs(phv, "slot_initializer", 0);
+        if (svp && SvOK(*svp)) {
+            if (!SvROK(*svp) || SvTYPE(SvRV(*svp)) != SVt_PVCV)
+                croak("slot_initializer must be a coderef");
+            p->slot_initializer_cv = (CV *)SvREFCNT_inc(SvRV(*svp));
+        }
+        else {
+            p->slot_initializer_cv = NULL;
         }
     }
     
@@ -1184,7 +1196,24 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
                 }
             }
             
-            (void)hv_store((HV*)SvRV(object), keyname, keylen, val, 0);
+            if ( param->slot_initializer_cv == NULL ) {
+                (void)hv_store((HV*)SvRV(object), keyname, keylen, val, 0);
+            }
+            else {
+                int count;
+                dSP;
+                ENTER;
+                SAVETMPS;
+                PUSHMARK(SP);
+                EXTEND(SP, 2);
+                PUSHs(object);
+                PUSHs(val);
+                PUTBACK;
+                count = call_sv((SV *)param->slot_initializer_cv, G_VOID);
+                SPAGAIN;
+                FREETMPS;
+                LEAVE;
+            }
             
             if ( value_was_from_args && ( flags & XSCON_FLAG_HAS_TRIGGER ) ) {
                 xscon_run_trigger(object, param);
@@ -1469,6 +1498,7 @@ BOOT:
     newCONSTSUB(stash, "XSCON_FLAG_HAS_TRIGGER",          newSViv(XSCON_FLAG_HAS_TRIGGER));
     newCONSTSUB(stash, "XSCON_FLAG_WEAKEN",               newSViv(XSCON_FLAG_WEAKEN));
     newCONSTSUB(stash, "XSCON_FLAG_HAS_ALIASES",          newSViv(XSCON_FLAG_HAS_ALIASES));
+    newCONSTSUB(stash, "XSCON_FLAG_HAS_SLOT_INITIALIZER", newSViv(XSCON_FLAG_HAS_SLOT_INITIALIZER));
 
     newCONSTSUB(stash, "XSCON_BITSHIFT_DEFAULTS",         newSViv(XSCON_BITSHIFT_DEFAULTS));
     newCONSTSUB(stash, "XSCON_BITSHIFT_TYPES",            newSViv(XSCON_BITSHIFT_TYPES));

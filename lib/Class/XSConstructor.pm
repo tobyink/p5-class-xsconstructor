@@ -124,7 +124,7 @@ sub import {
 			_croak("Required attribute $name cannot have undef init_arg");
 		}
 		
-		my @unknown_keys = sort grep !/\A(isa|required|is|default|builder|coerce|init_arg|trigger|weak_ref|alias)\z/, keys %spec;
+		my @unknown_keys = sort grep !/\A(isa|required|is|default|builder|coerce|init_arg|trigger|weak_ref|alias|slot_initializer)\z/, keys %spec;
 		if ( @unknown_keys ) {
 			_croak("Unknown keys in spec: %d", join ", ", @unknown_keys);
 		}
@@ -165,6 +165,10 @@ sub import {
 		}
 		elsif ( $spec{alias} ) {
 			$meta_attribute{aliases} = [ $spec{alias} ];
+		}
+		
+		if ( is_CodeRef $spec{slot_initializer} ) {
+			$meta_attribute{slot_initializer} = $spec{slot_initializer};
 		}
 		
 		# Add new attribute
@@ -328,6 +332,7 @@ sub _build_flags {
 	$flags |= XSCON_FLAG_HAS_TRIGGER           if $spec->{trigger};
 	$flags |= XSCON_FLAG_WEAKEN                if $spec->{weak_ref};
 	$flags |= XSCON_FLAG_HAS_ALIASES           if $spec->{alias};
+	$flags |= XSCON_FLAG_HAS_SLOT_INITIALIZER  if $spec->{slot_initializer};
 	
 	my $has_common_default = 0;
 	if ( exists $spec->{default} and !defined $spec->{default} ) {
@@ -714,6 +719,26 @@ Supports C<weak_ref> like L<Moose> and L<Moo>.
   defined $object->{thing} or die;  # dies
 
 =item *
+
+Custom slot initializers.
+
+  use Class::XSConstructor foo => {
+    slot_initializer => sub {
+      my ( $object, $value ) = @_;
+      $object->{FOO} = $value; 
+    },
+  };
+
+One of the jobs that the constructor obviously does is insert each value
+into the relevant slots in the object's underlying hash. In very rare
+cases, you might want to provide a callback to do this. A use case might
+be if you have particular attributes that you wish to store using inside-out
+object techniques, or encrypt before storing.
+
+Obviously your accessors will also need to be written to be able to access
+the value from wherever you've stored it.
+
+=item * 
 
 Supports Moose/Moo/Class::Tiny-style C<BUILD>, C<BUILDALL>, C<BUILDARGS>,
 and C<FOREIGNBUILDARGS> methods.
