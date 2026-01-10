@@ -157,3 +157,11 @@
 	changeset [
 		item "Faster strict constructor checks."^^Change;
 	].
+
+`Class-XSConstructor 0.017000 cpan:TOBYINK`
+	issued  2026-01-10;
+	changeset [
+		item "Hopefully fix errors on debugging builds of Perl."^^Bugfix;
+		item "BUILDARGS/FOREIGNBUILDARGS/BUILDALL to play nice with other modules."^^Addition;
+		item "slot_initializer."^^Addition;
+	].
