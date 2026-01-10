@@ -43,15 +43,18 @@ sub import {
 	$methodname ||= 'new';
 	
 	$META{$package} ||= { package => $package };
-	inheritance_stuff($package);
 	
 	if (our $REDEFINE) {
 		no warnings 'redefine';
 		install_constructor("$package\::$methodname");
+		install_BUILDALL("$package\::BUILDALL");
 	}
 	else {
 		install_constructor("$package\::$methodname");
+		install_BUILDALL("$package\::BUILDALL");
 	}
+
+	inheritance_stuff($package);
 	
 	do {
 		no strict 'refs';
@@ -376,10 +379,19 @@ sub inheritance_stuff {
 	
 	for my $parent ( @isa ) {
 		no strict 'refs';
+		# Moo will sometimes not have a constructor in &{"${parent}::new"}
+		# when by all that is good and holy, it should.
+		if ( $INC{'Moo.pm'} and $Moo::MAKERS{$parent} ) {
+			Moo->_constructor_maker_for( $parent )->install_delayed;
+			Sub::Defer::undefer_sub( \&{"${parent}::new"} );
+		}
 		if ( defined &{"${parent}::new"} ) {
 			if ( not $META{$parent} ) {
 				# We are inheriting from a foreign class.
-				$META{$package}{foreignconstructor} = \&{"${parent}::new"};
+				$META{$package}{foreignclass}         = $parent;
+				$META{$package}{foreignconstructor}   = \&{"${parent}::new"};
+				$META{$package}{foreignbuildall}      = $parent->can('BUILDALL');
+				$META{$package}{foreignbuildargs}     = $parent->can('BUILDARGS');
 			}
 			last;
 		}
@@ -449,8 +461,9 @@ sub populate_build {
 
 sub get_metadata {
 	my $klass = ref($_[0]) || $_[0];
-	$META{$klass}{buildargs}        = $klass->can('BUILDARGS');
-	$META{$klass}{foreignbuildargs} = $klass->can('FOREIGNBUILDARGS') if $META{$klass}{foreignconstructor};
+	$META{$klass}{buildargs}        ||= $klass->can('BUILDARGS');
+	$META{$klass}{foreignbuildargs} ||= $klass->can('FOREIGNBUILDARGS')
+		if $META{$klass}{foreignconstructor} && !$META{$klass}{foreignbuildall};
 	return $META{$klass};
 }
 

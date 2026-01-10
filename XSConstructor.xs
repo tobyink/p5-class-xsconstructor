@@ -86,6 +86,7 @@ typedef struct {
     CV     *buildargs_cv;
     CV     *foreignbuildargs_cv;
     CV     *foreignconstructor_cv;
+    bool    foreignbuildall;
 
     xscon_param_t *params;
     I32     num_params;
@@ -178,6 +179,14 @@ xscon_constructor_create(SV *sig_sv) {
         sig->foreignconstructor_cv = (CV *)SvREFCNT_inc(SvRV(*svp));
     } else {
         sig->foreignconstructor_cv = NULL;
+    }
+
+    /* foreignbuildall */
+    svp = hv_fetchs(sig_hv, "foreignbuildall", 0);
+    if (svp && SvOK(*svp)) {
+        sig->foreignbuildall = TRUE;
+    } else {
+        sig->foreignbuildall = FALSE;
     }
 
     /* Get build methods */
@@ -510,7 +519,7 @@ xscon_buildargs(const xscon_constructor_t* sig, const char* klass, I32 ax, I32 i
 }
 
 static AV*
-xscon_foreignbuildargs(const xscon_constructor_t* sig, const char* klass, I32 ax, I32 items) {
+xscon_foreignbuildargs(const xscon_constructor_t* sig, const char* klass, I32 ax, I32 items, I32 context) {
 
     dTHX;
     dSP;
@@ -536,7 +545,7 @@ xscon_foreignbuildargs(const xscon_constructor_t* sig, const char* klass, I32 ax
     }
     PUTBACK;
 
-    I32 count = call_sv((SV *)sig->foreignbuildargs_cv, G_ARRAY);
+    I32 count = call_sv((SV *)sig->foreignbuildargs_cv, context);
 
     SPAGAIN;
 
@@ -1175,7 +1184,7 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
                 }
             }
             
-            (void)hv_store((HV *)SvRV(object), keyname, keylen, val, 0);
+            (void)hv_store((HV*)SvRV(object), keyname, keylen, val, 0);
             
             if ( value_was_from_args && ( flags & XSCON_FLAG_HAS_TRIGGER ) ) {
                 xscon_run_trigger(object, param);
@@ -1520,9 +1529,48 @@ CODE:
     /* $klassname = shift */
     klassname = SvROK(klass) ? sv_reftype(SvRV(klass), 1) : SvPV_nolen_const(klass);
 
-    if ( sig->foreignconstructor_cv ) {
+    bool need_to_remove_no_build = FALSE;
+
+    if ( sig->foreignbuildall ) {
+        if ( sig->foreignbuildargs_cv ) {
+            /* @fbargs = scalar $foreign->BUILDARGS( @_ ) */
+            AV* fbargs = xscon_foreignbuildargs(sig, klassname, ax, items, G_SCALAR);
+
+            /* $args = $fbargs[0] */
+            SV** svp = av_fetch(fbargs, 0, 0);
+            args = newSVsv(*svp);
+
+            if ( !args || !IsHashRef(args)) {
+                croak("Parent BUILDARGS did not return a hashref");
+            }
+        }
+        else {
+            /* $args = ref($_[0]) eq 'HASH' ? %{+shift} : @_ */
+            args = newRV_inc((SV*)xscon_buildargs(sig, klassname, ax, items));
+            sv_2mortal(args);
+        }
+
+        if ( !hv_exists((HV*)SvRV(args), "__no_BUILD__", 12) ) {
+            /* $args{__no_BUILD__} = !!1 */
+            (void)hv_store((HV*)SvRV(args), "__no_BUILD__", 12, &PL_sv_yes, 0);
+            need_to_remove_no_build = TRUE;
+        }
+
+        /* @args_but_list = ( $args ) */
+        AV *args_but_list = newAV();
+        av_push( args_but_list, newSVsv(args) );
+
+        /* $object = $klassname->SUPER::new( @args_but_list ); */
+        object = xscon_foreignconstructor(sig, klassname, args_but_list);
+
+        if ( need_to_remove_no_build ) {
+            (void)hv_delete((HV*)SvRV(args), "__no_BUILD__", 12, G_DISCARD);
+            need_to_remove_no_build = FALSE;
+        }
+    }
+    else if ( sig->foreignconstructor_cv ) {
         /* @fbargs = $klassname->can('FOREIGNBUILDARGS') ? $klassname->FOREIGNBUILDARGS( @_ ) : @_ */
-        AV* fbargs = xscon_foreignbuildargs(sig, klassname, ax, items);
+        AV* fbargs = xscon_foreignbuildargs(sig, klassname, ax, items, G_ARRAY);
 
         /* $object = $klassname->SUPER::new( @fbargs ); */
         object = xscon_foreignconstructor(sig, klassname, fbargs);
@@ -1552,6 +1600,44 @@ CODE:
             xscon_strictcon(sig, klassname, object, args);
         }
     }
+
+    /* return $object */
+    ST(0) = object; /* because object is mortal, we should return it as is */
+    XSRETURN(1);
+}
+
+void
+BUILDALL(SV* object, SV* args)
+CODE:
+{
+    dTHX;
+
+    xscon_constructor_t *sig = (xscon_constructor_t *) CvXSUBANY(cv).any_ptr;
+    if (sig->is_placeholder) {
+        ENTER;
+        SAVETMPS;
+        PUSHMARK(SP);
+        XPUSHs(sv_2mortal(newSVpv(sig->package, 0)));
+        PUTBACK;
+        I32 count = call_pv("Class::XSConstructor::get_metadata", G_SCALAR);
+        SPAGAIN;
+        SV *sv = POPs;
+        xscon_constructor_free(sig);
+        sig = xscon_constructor_create(sv);
+        sig->is_placeholder = FALSE;
+        PUTBACK;
+        FREETMPS;
+        LEAVE;
+        CvXSUBANY(cv).any_ptr = sig;
+    }
+
+    const char *klassname = NULL;
+    HV *stash = SvSTASH(SvRV(object));
+    if (!stash) croak("Not a blessed object?");
+    klassname = HvNAME(stash);
+
+    /* Call BUILD methods */
+    xscon_buildall(sig, klassname, object, args);
 
     /* return $object */
     ST(0) = object; /* because object is mortal, we should return it as is */
@@ -1734,6 +1820,38 @@ CODE:
 {
     dTHX;
     CV *cv = newXS(name, XS_Class__XSConstructor_new_object, (char*)__FILE__);
+    if (cv == NULL)
+        croak("ARG! Something went really wrong while installing a new XSUB!");
+    
+    char *full = savepv(name);
+    const char *last = NULL;
+    for (const char *p = full; (p = strstr(p, "::")); p += 2) {
+        last = p;
+    }
+    char *pkg;
+    if (last) {
+        size_t len = (size_t)(last - full);
+        pkg = (char *)malloc(len + 1);
+        memcpy(pkg, full, len);
+        pkg[len] = '\0';
+    } else {
+        pkg = strdup("");
+    }
+    
+    xscon_constructor_t *sig;
+    Newxz(sig, 1, xscon_constructor_t);
+    sig->package = savepv(pkg);
+    sig->is_placeholder = TRUE;
+    
+    CvXSUBANY(cv).any_ptr = sig;
+}
+
+void
+install_BUILDALL(char* name)
+CODE:
+{
+    dTHX;
+    CV *cv = newXS(name, XS_Class__XSConstructor_BUILDALL, (char*)__FILE__);
     if (cv == NULL)
         croak("ARG! Something went really wrong while installing a new XSUB!");
     
