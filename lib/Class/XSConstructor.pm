@@ -466,10 +466,11 @@ sub populate_build {
 
 sub get_metadata {
 	my $klass = ref($_[0]) || $_[0];
-	$META{$klass}{buildargs}        ||= $klass->can('BUILDARGS');
-	$META{$klass}{foreignbuildargs} ||= $klass->can('FOREIGNBUILDARGS')
-		if $META{$klass}{foreignconstructor} && !$META{$klass}{foreignbuildall};
-	return $META{$klass};
+	my $meta  = $META{$klass} or return;
+	$meta->{buildargs}        ||= $klass->can('BUILDARGS');
+	$meta->{foreignbuildargs} ||= $klass->can('FOREIGNBUILDARGS')
+		if $meta->{foreignconstructor} && !$meta->{foreignbuildall};
+	return $meta;
 }
 
 sub get_build_methods {
