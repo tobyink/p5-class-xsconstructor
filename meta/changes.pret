@@ -179,3 +179,9 @@
 	changeset [
 		item "Fix bug trying to use '0' as an arrayref."^^Bugfix;
 	].
+
+`Class-XSConstructor 0.018002 cpan:TOBYINK`
+	issued  2026-01-11;
+	changeset [
+		item "Use the right name for the Class::XSConstructor module in pod examples!"^^Documentation;
+	].
