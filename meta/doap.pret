@@ -4,7 +4,7 @@
 
 `Class-XSConstructor`
 	:programming-language "Perl" ;
-	:shortdesc            "a super-fast (but limited) constructor in XS";
+	:shortdesc            "a super-fast constructor in XS";
 	:homepage             <https://metacpan.org/release/Class-XSConstructor>;
 	:download-page        <https://metacpan.org/release/Class-XSConstructor>;
 	:bug-database         <https://github.com/tobyink/p5-class-xsconstructor/issues>;
