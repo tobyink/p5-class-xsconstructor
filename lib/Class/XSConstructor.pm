@@ -471,7 +471,7 @@ sub get_build_methods {
 sub get_demolish_methods {
 	my $klass = ref($_[0]) || $_[0];
 	__PACKAGE__->populate_demolish( $klass );
-	return @{ $DEMOLISH_CACHE{$klass} };
+	return @{ $DEMOLISH_CACHE{$klass} or [] };
 }
 
 1;
