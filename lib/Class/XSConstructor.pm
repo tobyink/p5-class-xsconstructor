@@ -511,8 +511,9 @@ but it's fairly limited. It basically just does:
     bless { @_ }, ref($class)||$class;
   }
 
-Class::XSConstructor goes a little further towards Moose-like constructors,
-adding the following features:
+Class::XSConstructor goes a little further and supports all Moose's
+constructor features plus a few more. (That doesn't mean it supports
+Moose features unrelated to constructors!)
 
 =over
 
@@ -582,7 +583,7 @@ are all very common values to choose as defaults:
 
 If an attribute has a default or builder, its "required" status is ignored.
 
-Builders and coderef defaults are likely to siginificantly slow down your
+Builders and coderef defaults are likely to significantly slow down your
 constructor.
 
 =item *
@@ -651,7 +652,7 @@ Type coercions.
 
 If your type constraint is a Type::Tiny object which provides a coercion:
 
-  coercion => 1
+  coerce => 1
 
 Otherwise:
 
@@ -724,6 +725,9 @@ object techniques, or encrypt before storing.
 
 Obviously your accessors will also need to be written to be able to access
 the value from wherever you've stored it.
+
+Custom slot initializers are likely to siginificantly slow down your
+constructor.
 
 =item *
 
@@ -897,7 +901,12 @@ Type constraints (except for the specially optimized ones) and type coercions.
 
 =item *
 
-Defining any C<BUILD> methods or inheriting from classes which do.
+Custom slot initializers.
+
+=item *
+
+Defining any C<BUILD> or C<BUILDARGS> methods or inheriting from classes which
+do.
 
 =back
 
