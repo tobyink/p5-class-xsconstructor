@@ -31,7 +31,7 @@ BEGIN {
 	__PACKAGE__->XSLoader::load($VERSION);
 };
 
-our %META;
+our ( %META, %BUILD_CACHE, %DEMOLISH_CACHE );
 
 sub import {
 	my $class = shift;
@@ -46,22 +46,21 @@ sub import {
 	
 	if (our $REDEFINE) {
 		no warnings 'redefine';
-		install_constructor("$package\::$methodname");
-		install_BUILDALL("$package\::BUILDALL");
+		install_constructor(
+			"$package\::$methodname",
+			"$package\::BUILDALL",
+			"$package\::XSCON_CLEAR_CONSTRUCTOR_CACHE",
+		);
 	}
 	else {
-		install_constructor("$package\::$methodname");
-		install_BUILDALL("$package\::BUILDALL");
+		install_constructor(
+			"$package\::$methodname",
+			"$package\::BUILDALL",
+			"$package\::XSCON_CLEAR_CONSTRUCTOR_CACHE",
+		);
 	}
 
 	inheritance_stuff($package);
-	
-	do {
-		no strict 'refs';
-		no warnings 'once';
-		%{"${package}::__XSCON_BUILD"} = ();
-		%{"${package}::__XSCON_DEMOLISH"} = ();
-	};
 	
 	for my $pair (@{ mkopt \@_ }) {
 		my ($name, $thing) = @$pair;
@@ -415,20 +414,15 @@ sub populate_demolish {
 	my $package = ref($_[0]) || $_[0];
 	my $klass   = ref($_[1]) || $_[1];
 	
-	my $DEMOLISH = do {
-		no strict 'refs';
-		\%{"${package}::__XSCON_DEMOLISH"};
-	};
-	
 	if (!$klass->can('DEMOLISH')) {
-		$DEMOLISH->{$klass} = 0;
+		$DEMOLISH_CACHE{$klass} = 0;
 		return;
 	}
 	
 	require( $] >= 5.010 ? "mro.pm" : "MRO/Compat.pm" );
 	no strict 'refs';
 	
-	$DEMOLISH->{$klass} = [
+	$DEMOLISH_CACHE{$klass} = [
 		reverse
 		map { ( *{$_}{CODE} ) ? ( *{$_}{CODE} ) : () }
 		map { "$_\::DEMOLISH" }
@@ -442,20 +436,15 @@ sub populate_build {
 	my $package = ref($_[0]) || $_[0];
 	my $klass   = ref($_[1]) || $_[1];
 	
-	my $BUILD = do {
-		no strict 'refs';
-		\%{"${package}::__XSCON_BUILD"};
-	};
-	
 	if (!$klass->can('BUILD')) {
-		$BUILD->{$klass} = 0;
+		$BUILD_CACHE{$klass} = 0;
 		return;
 	}
 	
 	require( $] >= 5.010 ? "mro.pm" : "MRO/Compat.pm" );
 	no strict 'refs';
 	
-	$BUILD->{$klass} = [
+	$BUILD_CACHE{$klass} = [
 		map { ( *{$_}{CODE} ) ? ( *{$_}{CODE} ) : () }
 		map { "$_\::BUILD" }
 		reverse @{ mro::get_linear_isa($klass) }
@@ -475,22 +464,14 @@ sub get_metadata {
 
 sub get_build_methods {
 	my $klass = ref($_[0]) || $_[0];
-	populate_build( $klass, $klass );
-	my $BUILD = do {
-		no strict 'refs';
-		\%{"${klass}::__XSCON_BUILD"};
-	};
-	return @{ $BUILD->{$klass} or [] };
+	__PACKAGE__->populate_build( $klass );
+	return @{ $BUILD_CACHE{$klass} or [] };
 }
 
 sub get_demolish_methods {
 	my $klass = ref($_[0]) || $_[0];
-	populate_demolish( $klass, $klass );
-	my $DEMOLISH = do {
-		no strict 'refs';
-		\%{"${klass}::__XSCON_DEMOLISH"};
-	};
-	return @{ $DEMOLISH->{$klass} or [] };
+	__PACKAGE__->populate_demolish( $klass );
+	return @{ $DEMOLISH_CACHE{$klass} };
 }
 
 1;
@@ -810,13 +791,6 @@ with different attributes for each:
   use Class::XSConstructor [ 'Person', 'new_by_phone' ] => qw( name! phone );
   use Class::XSConstructor [ 'Person', 'new_by_email' ] => qw( name! email );
 
-However, you can create multiple contructors that all use the same defined
-list of attributes.
-
-  use Class::XSConstructor [ 'Person', 'new' ] => qw( name! phone email );
-  Class::XSConstructor::install_constructor( 'Person::new_by_phone' );
-  Class::XSConstructor::install_constructor( 'Person::new_by_email' );
-
 =back
 
 =head1 API
@@ -851,23 +825,19 @@ using:
 
 Returns nothing.
 
-=item C<< Class::XSConstructor::install_constructor($subname) >>
+=item C<< Class::XSConstructor::get_metadata( $package ) >>
 
-Just installs the XS constructor without doing some of the necessary setup.
-C<< $subname >> is a fully qualified sub name, like "Foo::new".
+Get a copy of the metadata that Class::XSConstructor holds for the
+package.
 
-This is automatically done as part of C<import>, so if you're using C<import>,
-you don't need to do this.
-
-Returns nothing.
+If you tamper with the metadata (which you probably shouldn't as it's inviting
+segfaults), you should call C<< Your::Class->XSCON_CLEAR_CONSTRUCTOR_CACHE >>
+afterwards. You may also need to clear
+C<< $Class::XSConstructor::BUILD_CACHE{$package} >> and
+C<< $Class::XSConstructor::DEMOLISH_CACHE{$package} >> as those are
+separate caches.
 
 =back
-
-=head2 Use of Package Variables
-
-Class::XSConstructor stores its configuration for class Foo in a bunch of
-package variables with the prefix C<< Foo::__XSCON_ >>. If you tamper with
-those, your warranty will be void.
 
 =head1 CAVEATS
 

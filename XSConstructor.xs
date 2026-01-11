@@ -131,10 +131,28 @@ typedef struct {
 } xscon_delegation_t;
 
 xscon_constructor_t*
-xscon_constructor_create(SV *sig_sv) {
+xscon_constructor_create(SV *sig_sv, xscon_constructor_t* sig) {
 
     dTHX;
     dSP;
+
+    if (!sig_sv) {
+        if ( !sig ) {
+            croak("Expected sig_sv or sig");
+        }
+        ENTER;
+        SAVETMPS;
+        PUSHMARK(SP);
+        XPUSHs(sv_2mortal(newSVpv(sig->package, 0)));
+        PUTBACK;
+        I32 count = call_pv("Class::XSConstructor::get_metadata", G_SCALAR);
+        SPAGAIN;
+        SV *sv = POPs;
+        sig_sv = newSVsv(sv);
+        PUTBACK;
+        FREETMPS;
+        LEAVE;
+    }
 
     /* Validate and dereference the top-level hashref */
     if (!SvROK(sig_sv) || SvTYPE(SvRV(sig_sv)) != SVt_PVHV) {
@@ -145,8 +163,46 @@ xscon_constructor_create(SV *sig_sv) {
     SV **svp;
 
     /* Allocate the signature struct */
-    xscon_constructor_t *sig;
-    Newxz(sig, 1, xscon_constructor_t);
+    if ( sig == NULL ) {
+        xscon_constructor_t *sig;
+        Newxz(sig, 1, xscon_constructor_t);
+    }
+    else {
+        if (sig->params) {
+            for (I32 i = 0; i < sig->num_params; i++) {
+                xscon_param_t *p = &sig->params[i];
+                Safefree(p->name);
+                Safefree(p->init_arg);
+                for (I32 j = 0; j < p->num_aliases; j++)
+                    Safefree(p->aliases[j]);
+                Safefree(p->aliases);
+                SvREFCNT_dec(p->default_sv);
+                SvREFCNT_dec(p->trigger_sv);
+                SvREFCNT_dec(p->check_cv);
+                SvREFCNT_dec(p->coercion_cv);
+            }
+            Safefree(sig->params);
+        }
+        if (sig->allow) {
+            for (I32 j = 0; j < sig->num_allow; j++)
+                Safefree(sig->allow[j]);
+            Safefree(sig->allow);
+        }
+        if (sig->build_methods) {
+            for (I32 i = 0; i < sig->num_build_methods; i++) {
+                if (sig->build_methods[i]) {
+                    SvREFCNT_dec(sig->build_methods[i]);
+                }
+            }
+            Safefree(sig->build_methods);
+        }
+        if (sig->foreignbuildargs_cv)
+            Safefree(sig->foreignbuildargs_cv);
+        if (sig->foreignconstructor_cv)
+            Safefree(sig->foreignconstructor_cv);
+        if (sig->buildargs_cv)
+            Safefree(sig->buildargs_cv);
+    }
 
     /* This is not a placeholder. */
     sig->is_placeholder = FALSE;
@@ -402,42 +458,6 @@ xscon_destructor_create(char *packagename) {
     }
 
     return sig;
-}
-
-void
-xscon_constructor_free(xscon_constructor_t *sig)
-{
-    dTHX;
-
-    if (sig->params) {
-        for (I32 i = 0; i < sig->num_params; i++) {
-            xscon_param_t *p = &sig->params[i];
-            Safefree(p->name);
-            Safefree(p->init_arg);
-            for (I32 j = 0; j < p->num_aliases; j++)
-                Safefree(p->aliases[j]);
-            Safefree(p->aliases);
-            SvREFCNT_dec(p->default_sv);
-            SvREFCNT_dec(p->trigger_sv);
-            SvREFCNT_dec(p->check_cv);
-            SvREFCNT_dec(p->coercion_cv);
-        }
-        Safefree(sig->params);
-    }
-    if (sig->allow) {
-        for (I32 j = 0; j < sig->num_allow; j++)
-            Safefree(sig->allow[j]);
-        Safefree(sig->allow);
-    }
-    if (sig->build_methods) {
-        for (I32 i = 0; i < sig->num_build_methods; i++) {
-            if (sig->build_methods[i]) {
-                SvREFCNT_dec(sig->build_methods[i]);
-            }
-        }
-        Safefree(sig->build_methods);
-    }
-    Safefree(sig);
 }
 
 void
@@ -1277,14 +1297,14 @@ xscon_buildall(const xscon_constructor_t* sig, const char* klass, SV* const obje
     }
 
     /* Fall back to slow route because BUILDALL called on a subclass */
-    HV* const stash = gv_stashpv(sig->package, 1);
+    HV* const stash = gv_stashpv("Class::XSConstructor", 1);
     assert(stash != NULL);
     
     SV *pkgsv = newSVpv(sig->package, 0);
     SV *klasssv = newSVpv(klass, 0);
     
     /* get cache stuff */
-    SV** const globref = hv_fetch(stash, "__XSCON_BUILD", 13, 0);
+    SV** const globref = hv_fetch(stash, "BUILD_CACHE", 11, 0);
     HV* buildall_hash = buildall_hash = GvHV(*globref);
     STRLEN klass_len = strlen(klass);
     SV** buildall = hv_fetch(buildall_hash, klass, klass_len, 0);
@@ -1370,14 +1390,14 @@ xscon_demolishall(const xscon_destructor_t* sig, const char* klass, SV* const ob
     }
 
     /* Fall back to slow route because DEMOLISHALL called on a subclass */
-    HV* const stash = gv_stashpv(sig->package, 1);
+    HV* const stash = gv_stashpv("Class::XSConstructor", 1);
     assert(stash != NULL);
     
     SV *pkgsv = newSVpv(sig->package, 0);
     SV *klasssv = newSVpv(klass, 0);
     
     /* get cache stuff */
-    SV** const globref = hv_fetch(stash, "__XSCON_DEMOLISH", 16, 0);
+    SV** const globref = hv_fetch(stash, "DEMOLISH_CACHE", 14, 0);
     HV* demolishall_hash = GvHV(*globref);
     
     STRLEN klass_len = strlen(klass);
@@ -1536,25 +1556,7 @@ CODE:
     SV* object;
 
     xscon_constructor_t *sig = (xscon_constructor_t *) CvXSUBANY(cv).any_ptr;
-
-    if (sig->is_placeholder) {
-        ENTER;
-        SAVETMPS;
-        PUSHMARK(SP);
-        XPUSHs(sv_2mortal(newSVpv(sig->package, 0)));
-        PUTBACK;
-        I32 count = call_pv("Class::XSConstructor::get_metadata", G_SCALAR);
-        SPAGAIN;
-        SV *sv = POPs;
-        xscon_constructor_free(sig);
-        sig = xscon_constructor_create(sv);
-        sig->is_placeholder = FALSE;
-        PUTBACK;
-        FREETMPS;
-        LEAVE;
-
-        CvXSUBANY(cv).any_ptr = sig;
-    }
+    if (sig->is_placeholder) xscon_constructor_create(NULL, sig);
 
     /* $klassname = shift */
     klassname = SvROK(klass) ? sv_reftype(SvRV(klass), 1) : SvPV_nolen_const(klass);
@@ -1643,23 +1645,7 @@ CODE:
     dTHX;
 
     xscon_constructor_t *sig = (xscon_constructor_t *) CvXSUBANY(cv).any_ptr;
-    if (sig->is_placeholder) {
-        ENTER;
-        SAVETMPS;
-        PUSHMARK(SP);
-        XPUSHs(sv_2mortal(newSVpv(sig->package, 0)));
-        PUTBACK;
-        I32 count = call_pv("Class::XSConstructor::get_metadata", G_SCALAR);
-        SPAGAIN;
-        SV *sv = POPs;
-        xscon_constructor_free(sig);
-        sig = xscon_constructor_create(sv);
-        sig->is_placeholder = FALSE;
-        PUTBACK;
-        FREETMPS;
-        LEAVE;
-        CvXSUBANY(cv).any_ptr = sig;
-    }
+    if (sig->is_placeholder) xscon_constructor_create(NULL, sig);
 
     const char *klassname = NULL;
     HV *stash = SvSTASH(SvRV(object));
@@ -1671,6 +1657,20 @@ CODE:
 
     /* return $object */
     ST(0) = object; /* because object is mortal, we should return it as is */
+    XSRETURN(1);
+}
+
+void
+XSCON_CLEAR_CONSTRUCTOR_CACHE(SV* proto)
+CODE:
+{
+    dTHX;
+
+    xscon_constructor_t *sig = (xscon_constructor_t *) CvXSUBANY(cv).any_ptr;
+    sig->is_placeholder = TRUE;
+
+    /* return $proto */
+    ST(0) = proto;
     XSRETURN(1);
 }
 
@@ -1845,46 +1845,22 @@ CODE:
 }
 
 void
-install_constructor(char* name)
+install_constructor(char* name, char* name2, char* name3)
 CODE:
 {
     dTHX;
     CV *cv = newXS(name, XS_Class__XSConstructor_new_object, (char*)__FILE__);
     if (cv == NULL)
         croak("ARG! Something went really wrong while installing a new XSUB!");
-    
-    char *full = savepv(name);
-    const char *last = NULL;
-    for (const char *p = full; (p = strstr(p, "::")); p += 2) {
-        last = p;
-    }
-    char *pkg;
-    if (last) {
-        size_t len = (size_t)(last - full);
-        pkg = (char *)malloc(len + 1);
-        memcpy(pkg, full, len);
-        pkg[len] = '\0';
-    } else {
-        pkg = strdup("");
-    }
-    
-    xscon_constructor_t *sig;
-    Newxz(sig, 1, xscon_constructor_t);
-    sig->package = savepv(pkg);
-    sig->is_placeholder = TRUE;
-    
-    CvXSUBANY(cv).any_ptr = sig;
-}
 
-void
-install_BUILDALL(char* name)
-CODE:
-{
-    dTHX;
-    CV *cv = newXS(name, XS_Class__XSConstructor_BUILDALL, (char*)__FILE__);
-    if (cv == NULL)
-        croak("ARG! Something went really wrong while installing a new XSUB!");
-    
+     CV *cv2 = newXS(name2, XS_Class__XSConstructor_BUILDALL, (char*)__FILE__);
+     if (cv2 == NULL)
+         croak("ARG! Something went really wrong while installing a new XSUB!");
+
+     CV *cv3 = newXS(name3, XS_Class__XSConstructor_XSCON_CLEAR_CONSTRUCTOR_CACHE, (char*)__FILE__);
+     if (cv3 == NULL)
+         croak("ARG! Something went really wrong while installing a new XSUB!");
+
     char *full = savepv(name);
     const char *last = NULL;
     for (const char *p = full; (p = strstr(p, "::")); p += 2) {
@@ -1906,6 +1882,8 @@ CODE:
     sig->is_placeholder = TRUE;
     
     CvXSUBANY(cv).any_ptr = sig;
+    CvXSUBANY(cv2).any_ptr = sig;
+    CvXSUBANY(cv3).any_ptr = sig;
 }
 
 void
