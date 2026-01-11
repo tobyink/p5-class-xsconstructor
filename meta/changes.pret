@@ -165,3 +165,11 @@
 		item "BUILDARGS/FOREIGNBUILDARGS/BUILDALL to play nice with other modules."^^Addition;
 		item "slot_initializer."^^Addition;
 	].
+
+`Class-XSConstructor 0.018000 cpan:TOBYINK`
+	issued  2026-01-11;
+	changeset [
+		item "Class::XSConstructor::get_metadata() should return undef for classes we didn't build."^^Bugfix;
+		item "Somewhat document Class::XSConstructor::get_metadata()."^^Documentation;
+		item "Somewhat supported way to clear internal caches."^^Change;
+	].
