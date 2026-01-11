@@ -185,3 +185,11 @@
 	changeset [
 		item "Use the right name for the Class::XSConstructor module in pod examples!"^^Documentation;
 	].
+
+`Class-XSConstructor 0.019000 cpan:TOBYINK`
+	issued  2026-01-11;
+	changeset [
+		item "New undef_tolerant option."^^Addition;
+		item "Small documentation improvements."^^Documentation;
+		item "Change the distribution abstract."^^Packaging;
+	].
