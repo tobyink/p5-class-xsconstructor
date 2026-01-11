@@ -173,3 +173,9 @@
 		item "Somewhat document Class::XSConstructor::get_metadata()."^^Documentation;
 		item "Somewhat supported way to clear internal caches."^^Change;
 	].
+
+`Class-XSConstructor 0.018001 cpan:TOBYINK`
+	issued  2026-01-11;
+	changeset [
+		item "Fix bug trying to use '0' as an arrayref."^^Bugfix;
+	].
