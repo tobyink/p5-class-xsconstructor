@@ -542,15 +542,15 @@ Supports defaults and builders.
 
 For example:
 
-  use Class::XSAccessor name => { default => '__ANON__' };
+  use Class::XSConstructor name => { default => '__ANON__' };
 
 Or:
 
-  use Class::XSAccessor name => { default => sub { return '__ANON__' } };
+  use Class::XSConstructor name => { default => sub { return '__ANON__' } };
 
 Or:
 
-  use Class::XSAccessor name => { builder => '__fallback_name' };
+  use Class::XSConstructor name => { builder => '__fallback_name' };
   sub __fallback_name {
     return '__ANON__';
   }
@@ -558,7 +558,7 @@ Or:
 You can alternatively provide a string of Perl code that will be evaluated
 to generate the default:
 
-  use Class::XSAccessor name => { default => \'sprintf("__%s__", uc "anon")' };
+  use Class::XSConstructor name => { default => \'sprintf("__%s__", uc "anon")' };
 
 If you expect subclasses to need to override defaults, use a builder.
 Subclasses can simply provide a method of the same name.
