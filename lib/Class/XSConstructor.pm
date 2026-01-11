@@ -123,9 +123,9 @@ sub import {
 			_croak("Required attribute $name cannot have undef init_arg");
 		}
 		
-		my @unknown_keys = sort grep !/\A(isa|required|is|default|builder|coerce|init_arg|trigger|weak_ref|alias|slot_initializer)\z/, keys %spec;
+		my @unknown_keys = grep !/\A(isa|required|is|default|builder|coerce|init_arg|trigger|weak_ref|alias|slot_initializer|undef_tolerant)\z/, keys %spec;
 		if ( @unknown_keys ) {
-			_croak("Unknown keys in spec: %d", join ", ", @unknown_keys);
+			_croak("Unknown keys in spec: %s", join ", ", sort @unknown_keys);
 		}
 		
 		my %meta_attribute = (
@@ -168,6 +168,10 @@ sub import {
 		
 		if ( is_CodeRef $spec{slot_initializer} ) {
 			$meta_attribute{slot_initializer} = $spec{slot_initializer};
+		}
+		
+		if ( exists $spec{undef_tolerant} ) {
+			$meta_attribute{undef_tolerant} = !!$spec{undef_tolerant};
 		}
 		
 		# Add new attribute
@@ -332,6 +336,7 @@ sub _build_flags {
 	$flags |= XSCON_FLAG_WEAKEN                if $spec->{weak_ref};
 	$flags |= XSCON_FLAG_HAS_ALIASES           if $spec->{alias};
 	$flags |= XSCON_FLAG_HAS_SLOT_INITIALIZER  if $spec->{slot_initializer};
+	$flags |= XSCON_FLAG_UNDEF_TOLERANT        if $spec->{undef_tolerant};
 	
 	my $has_common_default = 0;
 	if ( exists $spec->{default} and !defined $spec->{default} ) {
@@ -719,6 +724,25 @@ object techniques, or encrypt before storing.
 
 Obviously your accessors will also need to be written to be able to access
 the value from wherever you've stored it.
+
+=item *
+
+Undef-tolerant attributes.
+
+  package My::Class {
+    use Class::XSConstructor foo => { undef_tolerant => 1 };
+  }
+  
+  my $thing1 = My::Class->new( foo => 42 );
+  exists $thing1->{foo};   # true
+  
+  my $thing2 = My::Class->new( foo => undef );
+  exists $thing2->{foo};   # false
+
+If an attribute is undef-tolerant, it means that setting it to C<undef>
+in the constructor is equivalent to not setting it at all. If it has a
+default, it will be used. Otherwise, if it was a required attribute,
+this will throw an error.
 
 =item * 
 
