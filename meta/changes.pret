@@ -193,3 +193,10 @@
 		item "Small documentation improvements."^^Documentation;
 		item "Change the distribution abstract."^^Packaging;
 	].
+
+`Class-XSConstructor 0.020000 cpan:TOBYINK`
+	issued  2026-01-12;
+	changeset [
+		item "Some internal refactoring, especially of how built-in defaults are handled."^^Addition;
+		item "Class::XSReader exposing an XS function which has existed internally since 0.016000."^^Addition;
+	].
