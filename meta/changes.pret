@@ -200,3 +200,9 @@
 		item "Some internal refactoring, especially of how built-in defaults are handled."^^Addition;
 		item "Class::XSReader exposing an XS function which has existed internally since 0.016000."^^Addition;
 	].
+
+`Class-XSConstructor 0.021000 cpan:TOBYINK`
+	issued  2026-01-13;
+	changeset [
+		item "Class::XSDestructor now also installs a DEMOLISHALL method."^^Addition;
+	].
