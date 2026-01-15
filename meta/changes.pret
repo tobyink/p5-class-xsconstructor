@@ -206,3 +206,11 @@
 	changeset [
 		item "Class::XSDestructor now also installs a DEMOLISHALL method."^^Addition;
 	].
+
+`Class-XSConstructor 0.022000 cpan:TOBYINK`
+	issued  2026-01-15;
+	changeset [
+		item "Somewhat supported way to clear internal caches for the destructor too."^^Addition;
+		item "Suppress a few potential 'used only once' warnings."^^Bugfix;
+		item "Document clearing internal data, when it might be useful, etc."^^Addition;
+	].
