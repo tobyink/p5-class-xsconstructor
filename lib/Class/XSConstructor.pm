@@ -394,7 +394,6 @@ sub inheritance_stuff {
 				$META{$package}{foreignclass}         = $parent;
 				$META{$package}{foreignconstructor}   = \&{"${parent}::new"};
 				$META{$package}{foreignbuildall}      = $parent->can('BUILDALL');
-				$META{$package}{foreignbuildargs}     = $parent->can('BUILDARGS');
 			}
 			last;
 		}
