@@ -214,3 +214,9 @@
 		item "Suppress a few potential 'used only once' warnings."^^Bugfix;
 		item "Document clearing internal data, when it might be useful, etc."^^Addition;
 	].
+
+`Class-XSConstructor 0.022001 cpan:TOBYINK`
+	issued  2026-01-16;
+	changeset [
+		item "Fix an issue calling parent constructors where the parent class has a BUILDARGS method. (We need to ignore the parent BUILDARGS.)"^^Bugfix;
+	].
