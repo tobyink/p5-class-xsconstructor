@@ -2308,15 +2308,3 @@ run (...)
         /* Re-enter the scope level we were supposed to be in, or perl
          * will get confused. */
         ENTER;
-
-#undef PERL_NO_GET_CONTEXT
-#ifdef lex_stuff_sv
-void
-lex_stuff (s)
-        SV *s
-    CODE:
-        if (!PL_parser)
-            Perl_croak(aTHX_ "Not currently compiling anything");
-        lex_stuff_sv(s, 0);
-
-#endif
