@@ -226,3 +226,11 @@
 	changeset [
 		item "Fix issues passing parameters to FOREIGNBUILDARGS."^^Bugfix;
 	].
+
+`Class-XSConstructor 0.023000 cpan:TOBYINK`
+	issued  2026-01-21;
+	changeset [
+		item "Class::XSConstructor now supports clone_on_write."^^Addition;
+		item "Class::XSReader now supports clone_on_read."^^Addition;
+		item "Add some internal utilities for (mostly) Marlin to use."^^Addition;
+	].

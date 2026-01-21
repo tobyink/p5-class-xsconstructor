@@ -7,7 +7,7 @@ package Class::XSReader;
 
 BEGIN {
 	our $AUTHORITY = 'cpan:TOBYINK';
-	our $VERSION   = '0.022002';
+	our $VERSION   = '0.023000';
 	
 	if ( eval { require Types::Standard; 1 } ) {
 		Types::Standard->import(
@@ -183,6 +183,9 @@ Builders can be used:
   sub _build_full_name ( $self ) {
     return sprintf( '%s %s', $self->first_name, $self->last_name );
   }
+
+There is also a C<clone_on_read> option as a counterpart to
+Class::XSConstructor's C<clone_on_write>.
 
 =head1 SEE ALSO
 
