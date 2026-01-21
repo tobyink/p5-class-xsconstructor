@@ -1,5 +1,10 @@
 #define PERL_NO_GET_CONTEXT     /* we want efficiency */
 #include "xshelper.h"
+#include "clone.xs"
+
+#define NEED_caller_cx
+#define NEED_PL_parser
+#define DPPP_PL_parser_NO_DUMMY
 
 #define IsObject(sv)    (SvROK(sv) && SvOBJECT(SvRV(sv)))
 #define IsArrayRef(sv)  (SvROK(sv) && !SvOBJECT(SvRV(sv)) && SvTYPE(SvRV(sv)) == SVt_PVAV)
@@ -40,6 +45,7 @@ enum {
     XSCON_FLAG_HAS_ALIASES          =  256,
     XSCON_FLAG_HAS_SLOT_INITIALIZER =  512,
     XSCON_FLAG_UNDEF_TOLERANT       = 1024,
+    XSCON_FLAG_CLONE_ON_WRITE       = 2048,
 
     XSCON_BITSHIFT_DEFAULTS         =   16,
     XSCON_BITSHIFT_TYPES            =   24,
@@ -91,6 +97,7 @@ typedef struct {
     CV     *check_cv;
     CV     *coercion_cv;
     CV     *slot_initializer_cv;
+    CV     *cloner_cv;
 } xscon_param_t;
 
 typedef struct {
@@ -131,6 +138,8 @@ typedef struct {
     CV     *check_cv;
     bool    has_coercion;
     CV     *coercion_cv;
+    bool    should_clone;
+    CV     *cloner_cv;
 } xscon_reader_t;
 
 typedef struct {
@@ -192,6 +201,8 @@ xscon_constructor_get_metadata(SV *sig_sv, xscon_constructor_t* sig) {
                 SvREFCNT_dec(p->trigger_sv);
                 SvREFCNT_dec(p->check_cv);
                 SvREFCNT_dec(p->coercion_cv);
+                SvREFCNT_dec(p->cloner_cv);
+                SvREFCNT_dec(p->slot_initializer_cv);
             }
             Safefree(sig->params);
         }
@@ -419,6 +430,19 @@ xscon_constructor_get_metadata(SV *sig_sv, xscon_constructor_t* sig) {
         }
         else {
             p->slot_initializer_cv = NULL;
+        }
+
+        svp = hv_fetchs(phv, "clone_on_write", 0);
+        if (svp && SvOK(*svp)) {
+            if (SvROK(*svp) && SvTYPE(SvRV(*svp)) == SVt_PVCV) {
+                p->cloner_cv = (CV *)SvREFCNT_inc(SvRV(*svp));
+            }
+            else {
+                p->cloner_cv = NULL;
+            }
+        }
+        else {
+            p->cloner_cv = NULL;
         }
     }
     
@@ -1210,6 +1234,42 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
         }
         
         if ( has_value ) {
+            if ( value_was_from_args && ( flags & XSCON_FLAG_CLONE_ON_WRITE ) ) {
+                if ( param->cloner_cv ) {
+                    SV* newval;
+                    dSP;
+                    int count;
+                    ENTER;
+                    SAVETMPS;
+                    PUSHMARK(SP);
+                    EXTEND(SP, 3);
+                    PUSHs(object);
+                    PUSHs(newSVpv(keyname, keylen));
+                    PUSHs(val);
+                    PUTBACK;
+                    count = call_sv((SV *)param->cloner_cv, G_SCALAR);
+                    SPAGAIN;
+                    SV* tmpval = POPs;
+                    newval = newSVsv(tmpval);
+                    FREETMPS;
+                    LEAVE;
+                    bool passed_this_time = xscon_check_type(keyname, newSVsv(newval), flags >> XSCON_BITSHIFT_TYPES, param->check_cv);
+                    if ( passed_this_time ) {
+                        val = newSVsv(newval);
+                    }
+                    else {
+                        croak("Cloning result '%s' failed type constraint for '%s'", SvPV_nolen(newval), keyname);
+                    }
+                }
+                else {
+                    HV *hseen = newHV();
+                    SV *newval = sv_clone(val, hseen, -1);
+                    hv_clear(hseen);
+                    SvREFCNT_dec((SV *)hseen);
+                    val = newval;
+                }
+            }
+
             if ( ( flags & XSCON_FLAG_HAS_SLOT_INITIALIZER ) && param->slot_initializer_cv ) {
                 int count;
                 dSP;
@@ -1228,7 +1288,7 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
             else {
                 (void)hv_store((HV*)SvRV(object), keyname, keylen, val, 0);
             }
-            
+
             if ( value_was_from_args && ( flags & XSCON_FLAG_HAS_TRIGGER ) ) {
                 xscon_run_trigger(object, param);
             }
@@ -1507,6 +1567,32 @@ xscon_strictcon(const xscon_constructor_t* sig, const char* klassname, SV* const
     }
 }
 
+void
+call_after (pTHX_ void *p)
+{
+    dSP;
+    SV  *cv = (SV*)p;
+    PUSHSTACKi(PERLSI_DESTROY);
+    PUSHMARK(SP);
+    call_sv(cv, G_VOID|G_DISCARD);
+    POPSTACK;
+    SvREFCNT_dec(cv);
+}
+
+void
+show_cx (pTHX_ const char *name, const PERL_CONTEXT *cx)
+{
+    int is_sub = CxTYPE(cx) == CXt_SUB;
+    CV *cxcv = is_sub ? cx->blk_sub.cv : NULL;
+    int is_special = is_sub ? CvSPECIAL(cxcv) : 0;
+    const char *cvname = is_sub ? GvNAME(CvGV(cxcv)) : "<none>";
+    Perl_warn(aTHX_ "%s: sub %s, special %s, name %s\n",
+        name,
+        (is_sub ? "yes" : "no"),
+        (is_special ? "yes" : "no"),
+        cvname);
+}
+
 MODULE = Class::XSConstructor  PACKAGE = Class::XSConstructor
 
 BOOT:
@@ -1524,6 +1610,7 @@ BOOT:
     newCONSTSUB(stash, "XSCON_FLAG_HAS_ALIASES",          newSViv(XSCON_FLAG_HAS_ALIASES));
     newCONSTSUB(stash, "XSCON_FLAG_HAS_SLOT_INITIALIZER", newSViv(XSCON_FLAG_HAS_SLOT_INITIALIZER));
     newCONSTSUB(stash, "XSCON_FLAG_UNDEF_TOLERANT",       newSViv(XSCON_FLAG_UNDEF_TOLERANT));
+    newCONSTSUB(stash, "XSCON_FLAG_CLONE_ON_WRITE",       newSViv(XSCON_FLAG_CLONE_ON_WRITE));
 
     newCONSTSUB(stash, "XSCON_BITSHIFT_DEFAULTS",         newSViv(XSCON_BITSHIFT_DEFAULTS));
     newCONSTSUB(stash, "XSCON_BITSHIFT_TYPES",            newSViv(XSCON_BITSHIFT_TYPES));
@@ -1789,7 +1876,50 @@ CODE:
     }
     
     SV** svp = hv_fetch(object_hv, sig->slot, slotlen, 0);
-    ST(0) = svp ? newSVsv(*svp) : &PL_sv_undef;
+    SV* val = svp ? newSVsv(*svp) : &PL_sv_undef;
+
+    if ( sig->should_clone && sig->cloner_cv == NULL ) {
+        HV *hseen = newHV();
+        SV *newval = sv_clone(val, hseen, -1);
+        hv_clear(hseen);
+        SvREFCNT_dec((SV *)hseen);
+        ST(0) = newval;
+    }
+    else if ( sig->should_clone ) {
+        SV* newval;
+        dSP;
+        int count;
+        ENTER;
+        SAVETMPS;
+        PUSHMARK(SP);
+        EXTEND(SP, 3);
+        PUSHs(object);
+        PUSHs(newSVpv(sig->slot, 0));
+        PUSHs(val);
+        PUTBACK;
+        count = call_sv((SV *)sig->cloner_cv, G_SCALAR);
+        SPAGAIN;
+        SV* tmpval = POPs;
+        newval = newSVsv(tmpval);
+        FREETMPS;
+        LEAVE;
+        
+        bool passed_this_time = TRUE;
+        if ( sig->has_check ) {
+            passed_this_time = xscon_check_type(sig->slot, newSVsv(newval), sig->check_flags, sig->check_cv);
+        }
+        
+        if ( passed_this_time ) {
+            ST(0) = newval;
+        }
+        else {
+            croak("Cloning result '%s' failed type constraint for '%s'", SvPV_nolen(newval), sig->slot);
+        }
+    }
+    else {
+        ST(0) = val;
+    }
+
     XSRETURN(1);
 }
 
@@ -2006,7 +2136,7 @@ CODE:
 }
 
 void
-install_reader(char *name, char *slot, bool has_default, int default_flags, SV* default_sv, int check_flags, SV* check, SV* coercion)
+install_reader(char *name, char *slot, bool has_default, int default_flags, SV* default_sv, int check_flags, SV* check, SV* coercion, ...)
 CODE:
 {
     dTHX;
@@ -2040,5 +2170,157 @@ CODE:
         sig->coercion_cv = NULL;
     }
 
+    SV *cloner = &PL_sv_undef;
+    if (items >= 9) {
+        cloner = ST(8);
+    }
+
+    if (cloner && IsCodeRef(cloner)) {
+        sig->should_clone = TRUE;
+        sig->cloner_cv = (CV *)SvREFCNT_inc(SvRV(cloner));
+    }
+    else if (cloner && SvTRUE(cloner)) {
+        sig->should_clone = TRUE;
+        sig->cloner_cv = NULL;
+    }
+    else {
+        sig->has_coercion = FALSE;
+        sig->coercion_cv = NULL;
+    }
+
     CvXSUBANY(cv).any_ptr = sig;
 }
+
+void
+clone(self, depth=-1)
+    SV *self
+    int depth
+    PREINIT:
+    SV *clone = &PL_sv_undef;
+    HV *hseen = newHV();
+    PPCODE:
+    TRACEME(("ref = 0x%x\n", self));
+    clone = sv_clone(self, hseen, depth);
+    hv_clear(hseen);  /* Free HV */
+    SvREFCNT_dec((SV *)hseen);
+    EXTEND(SP,1);
+    PUSHs(sv_2mortal(clone));
+
+
+#ifdef lex_stuff_sv
+
+void
+lex_stuff (s)
+        SV *s
+    CODE:
+        if (!PL_parser)
+            Perl_croak(aTHX_ "Not currently compiling anything");
+        lex_stuff_sv(s, 0);
+
+#endif
+
+UV
+count_BEGINs ()
+    PREINIT:
+        I32 c = 0;
+        const PERL_CONTEXT *cx;
+        const PERL_CONTEXT *dbcx;
+        const CV *cxcv;
+    CODE:
+        RETVAL = 0;
+        while ((cx = caller_cx(c++, &dbcx))) {
+            /*
+            show_cx(aTHX_ "cx", cx);
+            show_cx(aTHX_ "dbcx", dbcx);
+            */
+            if (CxTYPE(dbcx) == CXt_SUB   &&
+                (cxcv = dbcx->blk_sub.cv) &&
+                CvSPECIAL(cxcv)         &&
+                strEQ(GvNAME(CvGV(cxcv)), "BEGIN")
+            )
+                RETVAL++;
+        }
+        /*
+        Perl_warn(aTHX_ "count_BEGINS: frames %i, BEGINs %lu\n",
+            c, RETVAL);
+        */
+    OUTPUT:
+        RETVAL
+
+bool
+compiling_string_eval ()
+    PREINIT:
+        I32 c = 0;
+        const PERL_CONTEXT *cx;
+        const PERL_CONTEXT *dbcx;
+        const CV *cxcv;
+    CODE:
+        RETVAL = 0;
+        while ((cx = caller_cx(c++, &dbcx))) {
+            if (CxTYPE(dbcx) == CXt_SUB   &&
+                (cxcv = dbcx->blk_sub.cv) &&
+                CvSPECIAL(cxcv)         &&
+                strEQ(GvNAME(CvGV(cxcv)), "BEGIN")
+            ) {
+                cx = caller_cx(c + 1, &dbcx);
+                if (cx && CxREALEVAL(dbcx))
+                    RETVAL = 1;
+                break;
+            }
+        }
+    OUTPUT:
+        RETVAL
+
+SV *
+remaining_text ()
+    PREINIT:
+        char *c;
+    CODE:
+        RETVAL = &PL_sv_undef;
+        if (PL_parser) {
+            for (c = PL_bufptr; c < PL_bufend; c++) {
+                if (isSPACE(*c))    continue;
+                if (*c == '#')      break;
+                /* strictly it might be UTF8, but this is just an error so I
+                 * don't care. */
+                RETVAL = newSVpvn(c, PL_bufend - c);
+                break;
+            }
+        }
+    OUTPUT:
+        RETVAL
+
+void
+run (...)
+    PREINIT:
+        dORIGMARK;
+        SV      *sv;
+        I32     i = 0;
+    CODE:
+        /* This is the magic step... This leaves the scope that
+         * surrounds the call to run(), putting us back in the outer
+         * scope we were called from. This is what makes after_runtime
+         * subs run at the end of the inserted-into scope, rather than
+         * when run() finishes. */
+        LEAVE;
+        while (i++ < items) {
+            sv = *(MARK + i);
+            if (!SvROK(sv))
+                Perl_croak(aTHX_ "Not a reference");
+            sv = SvRV(sv);
+            /* We have a ref to a ref; this is after_runtime. */
+            if (SvROK(sv)) {
+                sv = SvRV(sv);
+                SvREFCNT_inc(sv);
+                SAVEDESTRUCTOR_X(call_after, sv);
+            }
+            /* This is at_runtime. */
+            else {
+                PUSHMARK(SP); PUTBACK;
+                call_sv(sv, G_VOID|G_DISCARD);
+                MSPAGAIN;
+            }
+        }
+        /* Re-enter the scope level we were supposed to be in, or perl
+         * will get confused. */
+        ENTER;

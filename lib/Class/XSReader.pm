@@ -87,13 +87,14 @@ sub import {
 			}
 		}
 		
-		my @unknown_keys = grep !/\A(isa|required|is|lazy|default|builder|coerce|init_arg|trigger|weak_ref|alias|slot_initializer|undef_tolerant|reader)\z/, keys %spec;
+		my @unknown_keys = grep !/\A(isa|required|is|lazy|default|builder|coerce|init_arg|trigger|weak_ref|alias|slot_initializer|undef_tolerant|reader|clone|clone_on_write|clone_on_read)\z/, keys %spec;
 		if ( @unknown_keys ) {
 			_croak("Unknown keys in spec: %s", join ", ", sort @unknown_keys);
 		}
 		
 		my $has_default = ( exists $spec{default} or defined $spec{builder} ) ? !!$spec{lazy} : 0;
 		my $has_type    = exists $spec{isa};
+		my $clone       = ( $spec{clone_on_read} or $spec{clone} );
 		
 		my @XS_args = (
 			sprintf( '%s::%s', $package, exists($spec{reader}) ? $spec{reader} : $slot ),
@@ -104,6 +105,7 @@ sub import {
 			$has_type ? Class::XSConstructor::_type_to_number( $type ) : 15,
 			$has_type ? $spec{isa} : undef,
 			$has_type ? $spec{coerce} : undef,
+			$clone ? $clone : undef,
 		);
 		
 		if (our $REDEFINE) {

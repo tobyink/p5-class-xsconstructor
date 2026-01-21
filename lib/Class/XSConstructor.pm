@@ -4,7 +4,7 @@ use warnings;
 
 package Class::XSConstructor;
 
-use Exporter::Tiny 1.000000 qw( mkopt _croak );
+use Exporter::Tiny 1.000000 qw( mkopt _croak _carp );
 use List::Util 1.45 qw( uniq );
 
 BEGIN {
@@ -25,6 +25,16 @@ BEGIN {
 			sub is_CodeRef   ($) { ref $_[0] eq 'CODE' }
 			sub is_Object    ($) { !!Scalar::Util::blessed($_[0]) }
 		|;
+	}
+	
+	if ( eval { require Sub::Util; 1 } ) {
+		*set_subname = \&Sub::Util::set_subname;
+	}
+	elsif ( eval { require Sub::Name; 1 } ) {
+		*set_subname = \&Sub::Name::subname;
+	}
+	else {
+		*set_subname = sub { pop @_ };
 	}
 	
 	require XSLoader;
@@ -120,7 +130,7 @@ sub import {
 			_croak("Required attribute $name cannot have undef init_arg");
 		}
 		
-		my @unknown_keys = grep !/\A(isa|required|is|lazy|default|builder|coerce|init_arg|trigger|weak_ref|alias|slot_initializer|undef_tolerant|reader)\z/, keys %spec;
+		my @unknown_keys = grep !/\A(isa|required|is|lazy|default|builder|coerce|init_arg|trigger|weak_ref|alias|slot_initializer|undef_tolerant|reader|clone|clone_on_write|clone_on_read)\z/, keys %spec;
 		if ( @unknown_keys ) {
 			_croak("Unknown keys in spec: %s", join ", ", sort @unknown_keys);
 		}
@@ -170,6 +180,10 @@ sub import {
 		
 		if ( exists $spec{undef_tolerant} ) {
 			$meta_attribute{undef_tolerant} = !!$spec{undef_tolerant};
+		}
+		
+		if ( $spec{clone_on_write} or $spec{clone} ) {
+			$meta_attribute{clone_on_write} = $spec{clone_on_write} || $spec{clone};
 		}
 		
 		# Add new attribute
@@ -334,6 +348,7 @@ sub _build_flags {
 	$flags |= XSCON_FLAG_HAS_ALIASES           if $spec->{alias};
 	$flags |= XSCON_FLAG_HAS_SLOT_INITIALIZER  if $spec->{slot_initializer};
 	$flags |= XSCON_FLAG_UNDEF_TOLERANT        if $spec->{undef_tolerant};
+	$flags |= XSCON_FLAG_CLONE_ON_WRITE        if $spec->{clone_on_write} || $spec->{clone};
 	
 	unless ( $spec->{lazy} ) {
 		$flags |= XSCON_FLAG_HAS_DEFAULT
@@ -476,6 +491,66 @@ sub get_demolish_methods {
 	my $klass = ref($_[0]) || $_[0];
 	__PACKAGE__->populate_demolish( $klass );
 	return @{ $DEMOLISH_CACHE{$klass} or [] };
+}
+
+my $USE_FILTER = defined $ENV{PERL_B_HOOKS_ATRUNTIME}
+	? $ENV{PERL_B_HOOKS_ATRUNTIME} eq "filter"
+	: not defined &lex_stuff;
+
+if ( $USE_FILTER ) {
+	require Filter::Util::Call;
+	no warnings "redefine";
+	*lex_stuff = set_subname lex_stuff => sub {
+		my ( $str ) = @_;
+		compiling_string_eval() and _croak "Can't stuff into a string eval";
+		if (defined(my $extra = remaining_text())) {
+			$extra =~ s/\n+\z//;
+			_carp "Extra text '$extra' after call to lex_stuff";
+		}
+		Filter::Util::Call::filter_add( sub {
+			$_ = $str;
+			Filter::Util::Call::filter_del();
+			return 1;
+		} );
+	};
+}
+
+my @Hooks;
+sub replace_hooks {
+	my ($new) = @_;
+	delete $Class::XSConstructor::{hooks};
+	no strict "refs";
+	$new and *{"hooks"} = $new;
+}
+sub clear {
+	my ($depth) = @_;
+	$Hooks[$depth] = undef;
+	replace_hooks $Hooks[$depth - 1];
+}
+sub find_hooks {
+	$USE_FILTER and compiling_string_eval() and _croak "Can't use at_runtime from a string eval";
+	my $depth = count_BEGINs() or _croak "You must call at_runtime at compile time";
+	my $hk;
+	unless ($hk = $Hooks[$depth]) {
+		my @hooks;
+		$hk = $Hooks[$depth] = \@hooks;
+		replace_hooks $hk;
+		lex_stuff(
+			q{Class::XSConstructor::run(@Class::XSConstructor::hooks);} .
+			"BEGIN{Class::XSConstructor::clear($depth)}"
+		);
+	}
+	return $hk;
+}
+sub at_runtime (&) {
+	my ($cv) = @_;
+	my $hk = find_hooks;
+	push @$hk, set_subname scalar(caller) . "::(at_runtime)", $cv;
+}
+sub after_runtime (&) {
+	my ($cv) = @_;
+	my $hk = find_hooks;
+	push @$hk, \set_subname scalar(caller) . "::(after_runtime)", $cv;
 }
 
 __PACKAGE__
@@ -729,6 +804,39 @@ constructor.
 
 =item *
 
+Automatic deep data cloning.
+
+Setting C<< clone_on_write => 1 >> will automatically deep clone incoming
+arguments before setting them.
+
+  package Local::Foo {
+    use Class::XSConstructor foo => { clone_on_write => 1 };
+  }
+  
+  my @array = ( 1, 2, 3 );
+  my $obj = Local::Foo->new( foo => \@array );
+  
+  push @array, 4; # does not affect the array within $obj.
+
+It is possible to provide a custom callback to clone a value, which may be
+useful to control clone depth, etc. This is obviously slower than the built-in
+clone functionality.
+
+  package Local::Foo {
+    use Class::XSConstructor foo => { clone_on_write => sub {
+      my ( $self, $attr_name, $value ) = @_;
+      ...;
+      return $cloned_value;
+    } };
+  }
+
+The result of the callback will be re-checked against the type constraint,
+but will B<not> be coerced.
+
+Defaults are not cloned. Only values passed from outside are.
+
+=item *
+
 Undef-tolerant attributes.
 
   package My::Class {
@@ -967,6 +1075,15 @@ L<Marlin>.
 =head1 AUTHOR
 
 Toby Inkster E<lt>tobyink@cpan.orgE<gt>.
+
+Incorporates parts of L<Clone>, originally by
+Ray Finch E<lt>rdf@cpan.orgE<gt> and maintained by
+Breno G. de Oliveira E<lt>garu@cpan.orgE<gt>,
+Nicolas Rochelemagne E<lt>atoomic@cpan.orgE<gt>, and
+Florian Ragwitz E<lt>rafl@debian.orgE<gt>.
+
+Also incorporates parts of L<B::Hooks::AtRuntime> by
+Ben Morrow E<lt>ben@morrow.me.ukE<gt>.
 
 =head1 THANKS
 
