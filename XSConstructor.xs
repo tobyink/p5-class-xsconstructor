@@ -1,12 +1,7 @@
 #define PERL_NO_GET_CONTEXT     /* we want efficiency */
 
 #include "xshelper.h"
-
-#include "clone.xs"
-
-#define NEED_caller_cx
-#define NEED_PL_parser
-#define DPPP_PL_parser_NO_DUMMY
+#include "Clone.xs"
 
 #define IsObject(sv)    (SvROK(sv) && SvOBJECT(SvRV(sv)))
 #define IsArrayRef(sv)  (SvROK(sv) && !SvOBJECT(SvRV(sv)) && SvTYPE(SvRV(sv)) == SVt_PVAV)
@@ -2208,19 +2203,6 @@ clone(self, depth=-1)
     EXTEND(SP,1);
     PUSHs(sv_2mortal(clone));
 
-
-#ifdef lex_stuff_sv
-
-void
-lex_stuff (s)
-        SV *s
-    CODE:
-        if (!PL_parser)
-            Perl_croak(aTHX_ "Not currently compiling anything");
-        lex_stuff_sv(s, 0);
-
-#endif
-
 UV
 count_BEGINs ()
     PREINIT:
@@ -2326,3 +2308,15 @@ run (...)
         /* Re-enter the scope level we were supposed to be in, or perl
          * will get confused. */
         ENTER;
+
+#undef PERL_NO_GET_CONTEXT
+#ifdef lex_stuff_sv
+void
+lex_stuff (s)
+        SV *s
+    CODE:
+        if (!PL_parser)
+            Perl_croak(aTHX_ "Not currently compiling anything");
+        lex_stuff_sv(s, 0);
+
+#endif

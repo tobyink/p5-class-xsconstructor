@@ -1,3 +1,7 @@
+#define PERL_NO_GET_CONTEXT     /* we want efficiency */
+
+#include "xshelper.h"
+
 #define CLONE_KEY(x) ((char *) &x) 
 
 #define CLONE_STORE(x,y)                                               \

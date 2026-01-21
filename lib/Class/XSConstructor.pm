@@ -27,18 +27,8 @@ BEGIN {
 		|;
 	}
 	
-	if ( eval { require Sub::Util; 1 } ) {
-		*set_subname = \&Sub::Util::set_subname;
-	}
-	elsif ( eval { require Sub::Name; 1 } ) {
-		*set_subname = \&Sub::Name::subname;
-	}
-	else {
-		*set_subname = sub { pop @_ };
-	}
-	
 	require XSLoader;
-	__PACKAGE__->XSLoader::load($VERSION);
+	__PACKAGE__->XSLoader::load( $VERSION );
 };
 
 our ( %META, %BUILD_CACHE, %DEMOLISH_CACHE );
@@ -491,66 +481,6 @@ sub get_demolish_methods {
 	my $klass = ref($_[0]) || $_[0];
 	__PACKAGE__->populate_demolish( $klass );
 	return @{ $DEMOLISH_CACHE{$klass} or [] };
-}
-
-my $USE_FILTER = defined $ENV{PERL_B_HOOKS_ATRUNTIME}
-	? $ENV{PERL_B_HOOKS_ATRUNTIME} eq "filter"
-	: not defined &lex_stuff;
-
-if ( $USE_FILTER ) {
-	require Filter::Util::Call;
-	no warnings "redefine";
-	*lex_stuff = set_subname lex_stuff => sub {
-		my ( $str ) = @_;
-		compiling_string_eval() and _croak "Can't stuff into a string eval";
-		if (defined(my $extra = remaining_text())) {
-			$extra =~ s/\n+\z//;
-			_carp "Extra text '$extra' after call to lex_stuff";
-		}
-		Filter::Util::Call::filter_add( sub {
-			$_ = $str;
-			Filter::Util::Call::filter_del();
-			return 1;
-		} );
-	};
-}
-
-my @Hooks;
-sub replace_hooks {
-	my ($new) = @_;
-	delete $Class::XSConstructor::{hooks};
-	no strict "refs";
-	$new and *{"hooks"} = $new;
-}
-sub clear {
-	my ($depth) = @_;
-	$Hooks[$depth] = undef;
-	replace_hooks $Hooks[$depth - 1];
-}
-sub find_hooks {
-	$USE_FILTER and compiling_string_eval() and _croak "Can't use at_runtime from a string eval";
-	my $depth = count_BEGINs() or _croak "You must call at_runtime at compile time";
-	my $hk;
-	unless ($hk = $Hooks[$depth]) {
-		my @hooks;
-		$hk = $Hooks[$depth] = \@hooks;
-		replace_hooks $hk;
-		lex_stuff(
-			q{Class::XSConstructor::run(@Class::XSConstructor::hooks);} .
-			"BEGIN{Class::XSConstructor::clear($depth)}"
-		);
-	}
-	return $hk;
-}
-sub at_runtime (&) {
-	my ($cv) = @_;
-	my $hk = find_hooks;
-	push @$hk, set_subname scalar(caller) . "::(at_runtime)", $cv;
-}
-sub after_runtime (&) {
-	my ($cv) = @_;
-	my $hk = find_hooks;
-	push @$hk, \set_subname scalar(caller) . "::(after_runtime)", $cv;
 }
 
 __PACKAGE__

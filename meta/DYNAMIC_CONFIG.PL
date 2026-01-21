@@ -8,3 +8,7 @@ if ($ENV{EXTENDED_TESTING}) {
 if (eval "use Devel::PPPort 3.42; 1") {
 	Devel::PPPort::WriteFile();
 }
+
+%dynamic_config = (
+	OBJECT => '$(O_FILES)',
+);
