@@ -234,3 +234,9 @@
 		item "Class::XSReader now supports clone_on_read."^^Addition;
 		item "Class::XSConstructor::clone() utility function exists."^^Addition;
 	].
+
+`Class-XSConstructor 0.023001 cpan:TOBYINK`
+	issued  2026-01-22;
+	changeset [
+		item "Small correction."^^Documentation;
+	].
