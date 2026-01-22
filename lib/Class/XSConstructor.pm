@@ -1012,9 +1012,6 @@ Breno G. de Oliveira E<lt>garu@cpan.orgE<gt>,
 Nicolas Rochelemagne E<lt>atoomic@cpan.orgE<gt>, and
 Florian Ragwitz E<lt>rafl@debian.orgE<gt>.
 
-Also incorporates parts of L<B::Hooks::AtRuntime> by
-Ben Morrow E<lt>ben@morrow.me.ukE<gt>.
-
 =head1 THANKS
 
 To everybody in I<< #xs >> on irc.perl.org.
