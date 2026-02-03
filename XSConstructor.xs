@@ -790,7 +790,7 @@ xscon_check_type(char* keyname, SV* const val, int flags, CV* check_cv)
 
     // An unknown type constraint
     // We need to dive into the isa_hash to check it
-    if ( flags & XSCON_TYPE_OTHER == XSCON_TYPE_OTHER ) {
+    if ( ( flags & XSCON_TYPE_OTHER ) == XSCON_TYPE_OTHER ) {
         if ( !check_cv ) {
             warn( "Type constraint check coderef gone AWOL for attribute '%s', so just assuming value passes", keyname ? keyname : "unknown" );
             return 1;
