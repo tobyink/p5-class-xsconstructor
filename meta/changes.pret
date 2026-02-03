@@ -240,3 +240,9 @@
 	changeset [
 		item "Small correction."^^Documentation;
 	].
+
+`Class-XSConstructor 0.023002 cpan:TOBYINK`
+	issued  2026-02-03;
+	changeset [
+		item "Fix for a C operator precedence issue that was causing certain optimized code paths to be ignored."^^Bugfix;
+	].
