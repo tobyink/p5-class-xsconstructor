@@ -164,6 +164,9 @@ xscon_constructor_get_metadata(SV *sig_sv, xscon_constructor_t* sig) {
         XPUSHs(sv_2mortal(newSVpv(sig->package, 0)));
         PUTBACK;
         I32 count = call_pv("Class::XSConstructor::get_metadata", G_SCALAR);
+        if ( count < 1 ) {
+            croak("get_metadata did not return anything");
+        }
         SPAGAIN;
         SV *sv = POPs;
         sig_sv = newSVsv(sv);
@@ -179,19 +182,19 @@ xscon_constructor_get_metadata(SV *sig_sv, xscon_constructor_t* sig) {
     HV *sig_hv = (HV *)SvRV(sig_sv);
 
     SV **svp;
+    I32 i, j;
 
     /* Allocate the signature struct */
     if ( sig == NULL ) {
-        xscon_constructor_t *sig;
         Newxz(sig, 1, xscon_constructor_t);
     }
     else {
         if (sig->params) {
-            for (I32 i = 0; i < sig->num_params; i++) {
+            for (i = 0; i < sig->num_params; i++) {
                 xscon_param_t *p = &sig->params[i];
                 Safefree(p->name);
                 Safefree(p->init_arg);
-                for (I32 j = 0; j < p->num_aliases; j++)
+                for (j = 0; j < p->num_aliases; j++)
                     Safefree(p->aliases[j]);
                 Safefree(p->aliases);
                 SvREFCNT_dec(p->default_sv);
@@ -204,12 +207,12 @@ xscon_constructor_get_metadata(SV *sig_sv, xscon_constructor_t* sig) {
             Safefree(sig->params);
         }
         if (sig->allow) {
-            for (I32 j = 0; j < sig->num_allow; j++)
+            for (j = 0; j < sig->num_allow; j++)
                 Safefree(sig->allow[j]);
             Safefree(sig->allow);
         }
         if (sig->build_methods) {
-            for (I32 i = 0; i < sig->num_build_methods; i++) {
+            for (i = 0; i < sig->num_build_methods; i++) {
                 if (sig->build_methods[i]) {
                     SvREFCNT_dec(sig->build_methods[i]);
                 }
@@ -269,17 +272,18 @@ xscon_constructor_get_metadata(SV *sig_sv, xscon_constructor_t* sig) {
 
     /* Get build methods */
     {
+        I32 count;
         ENTER;
         SAVETMPS;
         PUSHMARK(SP);
         XPUSHs(sv_2mortal(newSVpv(sig->package, 0)));
         PUTBACK;
-        I32 count = call_pv("Class::XSConstructor::get_build_methods", G_ARRAY);
+        count = call_pv("Class::XSConstructor::get_build_methods", G_ARRAY);
         SPAGAIN;
         if (count > 0) {
             Newxz(sig->build_methods, count, CV *);
             sig->num_build_methods = count;
-            for (I32 i = count - 1; i >= 0; i--) {
+            for (i = count - 1; i >= 0; i--) {
                 SV *sv = POPs;
                 if (!SvROK(sv) || SvTYPE(SvRV(sv)) != SVt_PVCV) {
                     croak("get_build_methods must return only coderefs");
@@ -310,7 +314,7 @@ xscon_constructor_get_metadata(SV *sig_sv, xscon_constructor_t* sig) {
         I32 na = av_len(aav) + 1;
         sig->num_allow = na;
         Newxz(sig->allow, na, char *);
-        for (I32 j = 0; j < na; j++) {
+        for (j = 0; j < na; j++) {
             SV **asv = av_fetch(aav, j, 0);
             if (!asv || !*asv || !SvOK(*asv)) {
                 croak("allow value must be a string");
@@ -332,7 +336,7 @@ xscon_constructor_get_metadata(SV *sig_sv, xscon_constructor_t* sig) {
     Newxz(sig->params, num_params, xscon_param_t);
 
     /* Iterate over params array */
-    for (I32 i = 0; i < num_params; i++) {
+    for (i = 0; i < num_params; i++) {
 
         /* Extract param hashref */
         SV **elem = av_fetch(params_av, i, 0);
@@ -376,7 +380,7 @@ xscon_constructor_get_metadata(SV *sig_sv, xscon_constructor_t* sig) {
             I32 na = av_len(aav) + 1;
             p->num_aliases = na;
             Newxz(p->aliases, na, char *);
-            for (I32 j = 0; j < na; j++) {
+            for (j = 0; j < na; j++) {
                 SV **asv = av_fetch(aav, j, 0);
                 if (!asv || !*asv || !SvOK(*asv)) {
                     croak("alias must be a string");
@@ -452,14 +456,15 @@ xscon_destructor_get_metadata(char *packagename, xscon_destructor_t* sig) {
     dTHX;
     dSP;
 
+    I32 i;
+
     /* Allocate the signature struct */
     if ( sig == NULL ) {
-        xscon_destructor_t *sig;
         Newxz(sig, 1, xscon_destructor_t);
     }
     else {
         if (sig->demolish_methods) {
-            for (I32 i = 0; i < sig->num_demolish_methods; i++) {
+            for (i = 0; i < sig->num_demolish_methods; i++) {
                 if (sig->demolish_methods[i]) {
                     SvREFCNT_dec(sig->demolish_methods[i]);
                 }
@@ -486,7 +491,7 @@ xscon_destructor_get_metadata(char *packagename, xscon_destructor_t* sig) {
         if (count > 0) {
             Newxz(sig->demolish_methods, count, CV *);
             sig->num_demolish_methods = count;
-            for (I32 i = count - 1; i >= 0; i--) {
+            for (i = count - 1; i >= 0; i--) {
                 SV *sv = POPs;
                 if (!SvROK(sv) || SvTYPE(SvRV(sv)) != SVt_PVCV) {
                     croak("get_demolish_methods must return only coderefs");
@@ -511,8 +516,9 @@ join_with_commas(AV *av) {
 
     SV *out = newSVpvs("");
     I32 len = av_len(av) + 1;
+    I32 i;
 
-    for (I32 i = 0; i <= len; i++) {
+    for (i = 0; i <= len; i++) {
         SV **svp = av_fetch(av, i, 0);
         if (!svp) continue;
         if (i > 0)
@@ -530,7 +536,6 @@ xscon_buildargs(const xscon_constructor_t* sig, const char* klass, I32 ax, I32 i
 
     if ( sig->buildargs_cv ) {
         dSP;
-        int count;
         ENTER;
         SAVETMPS;
         PUSHMARK(SP);
@@ -539,7 +544,10 @@ xscon_buildargs(const xscon_constructor_t* sig, const char* klass, I32 ax, I32 i
             XPUSHs( newSVsv(ST(i)) );
         }
         PUTBACK;
-        count = call_sv((SV *)sig->buildargs_cv, G_SCALAR);
+        int count = call_sv((SV *)sig->buildargs_cv, G_SCALAR);
+        if ( count < 1 ) {
+            croak("BUILDARGS did not return anything");
+        }
         SPAGAIN;
         SV* got = POPs;
         SV* args_ref = newSVsv(got);
@@ -587,7 +595,7 @@ xscon_foreignbuildargs(const xscon_constructor_t* sig, const char* klass, AV* ar
 
     /* Case 1: no foreignbuildargs_cv → return @_, the class name shifted off */
     if (!sig->foreignbuildargs_cv) {
-        SV *discarded = av_shift(args);
+        SvREFCNT_dec(av_shift(args));
         return args;
     }
 
@@ -595,9 +603,11 @@ xscon_foreignbuildargs(const xscon_constructor_t* sig, const char* klass, AV* ar
     ENTER;
     SAVETMPS;
 
+    I32 i;
+
     PUSHMARK(SP);
     I32 argslen = av_len(args);
-    for (I32 i = 0; i <= argslen; i++) {
+    for (i = 0; i <= argslen; i++) {
         SV **svp = av_fetch(args, i, 0);
         XPUSHs(svp ? *svp : &PL_sv_undef);
     }
@@ -610,7 +620,7 @@ xscon_foreignbuildargs(const xscon_constructor_t* sig, const char* klass, AV* ar
     AV* av = newAV();
     /* copy return values into AV */
     av_extend(av, count);
-    for (I32 i = 0; i < count; i++) {
+    for (i = 0; i < count; i++) {
         SV *sv = POPs;
         av_store(av, count - ( i + 1 ), newSVsv(sv));
     }
@@ -637,7 +647,9 @@ xscon_foreignconstructor(const xscon_constructor_t* sig, const char* klass, AV* 
     /* --- call constructor in scalar context --- */
     ENTER;
     SAVETMPS;
-    
+
+    I32 i;
+
     PUSHMARK(SP);
 
     /* push class name as first argument */
@@ -645,7 +657,7 @@ xscon_foreignconstructor(const xscon_constructor_t* sig, const char* klass, AV* 
 
     /* push fbargs as list */
     I32 n = av_len(fbargs);
-    for (I32 i = 0; i <= n; i++) {
+    for (i = 0; i <= n; i++) {
         SV **svp = av_fetch(fbargs, i, 0);
         XPUSHs(svp ? *svp : &PL_sv_undef);
     }
@@ -731,7 +743,6 @@ _S_nv_is_integer (NV const nv) {
     }
     else {
         char buf[64];  /* Must fit sprintf/Gconvert of longest NV */
-        const char* p;
         (void)Gconvert(nv, NV_DIG, 0, buf);
         return _S_pv_is_integer(buf);
     }
@@ -788,8 +799,9 @@ xscon_check_type(char* keyname, SV* const val, int flags, CV* check_cv)
     dTHX;
     assert(val);
 
-    // An unknown type constraint
-    // We need to use check_cv.
+    /* An unknown type constraint
+     * We need to use check_cv.
+     */
     if ( ( flags & XSCON_TYPE_OTHER ) == XSCON_TYPE_OTHER ) {
         if ( !check_cv ) {
             warn( "Type constraint check coderef gone AWOL for attribute '%s', so just assuming value passes", keyname ? keyname : "unknown" );
@@ -799,16 +811,15 @@ xscon_check_type(char* keyname, SV* const val, int flags, CV* check_cv)
         SV* result;
 
         dSP;
-        int count;
         ENTER;
         SAVETMPS;
         PUSHMARK(SP);
         EXTEND(SP, 1);
         PUSHs(sv_2mortal(val));
         PUTBACK;
-        count  = call_sv((SV *)check_cv, G_SCALAR);
+        int count = call_sv((SV *)check_cv, G_SCALAR | G_EVAL);
         SPAGAIN;
-        result = POPs;
+        result = count ? POPs : &PL_sv_undef;
         bool return_val = SvTRUE(result);
         FREETMPS;
         LEAVE;
@@ -840,7 +851,7 @@ xscon_check_type(char* keyname, SV* const val, int flags, CV* check_cv)
         if ( !IsHashRef(val) ) {
             return FALSE;
         }
-        // HashRef[Any] or HashRef
+        /* HashRef[Any] or HashRef */
         if ( flags == XSCON_TYPE_HASHREF ) {
             return TRUE;
         }
@@ -871,27 +882,28 @@ xscon_check_type(char* keyname, SV* const val, int flags, CV* check_cv)
             }
             else if ( sv_true( val ) ) {
                 if ( SvPOKp(val) ) {
-                    // String "1"
+                    /* String "1" */
                     return SvCUR(val) == 1 && SvPVX(val)[0] == '1';
                 }
                 else if ( SvIOKp(val) ) {
-                    // Integer 1
+                    /* Integer 1 */
                     return SvIVX(val) == 1;
                 }
                 else if( SvNOKp(val) ) {
-                    // Float 1.0
+                    /* Float 1.0 */
                     return SvNVX(val) == 1.0;
                 }
                 else {
-                    // Another way to check for string "1"???
+                    /* Another way to check for string "1"??? */
                     STRLEN len;
                     char* ptr = SvPV(val, len);
                     return len == 1 && ptr[0] == '1';
                 }
             }
             else {
-                // Any non-reference non-true value (0, undef, "", "0")
-                // is a valid Bool.
+                /* Any non-reference non-true value (0, undef, "", "0")
+                 * is a valid Bool.
+                 */
                 return TRUE;
             }
         case XSCON_TYPE_BASE_INT:
@@ -908,7 +920,7 @@ xscon_check_type(char* keyname, SV* const val, int flags, CV* check_cv)
             }
             return FALSE;
         case XSCON_TYPE_BASE_PZINT:
-            // Discard non-integers
+            /* Discard non-integers */
             if ( (!SvOK(val)) || SvROK(val) || isGV(val) ) {
                 return FALSE;
             }
@@ -926,14 +938,15 @@ xscon_check_type(char* keyname, SV* const val, int flags, CV* check_cv)
                 }
             }
 
-            // Check that the string representation is non-empty and
-            // doesn't start with a minus sign. We already checked
-            // for strings that don't look like integers at all.
+            /* Check that the string representation is non-empty and
+             * doesn't start with a minus sign. We already checked
+             * for strings that don't look like integers at all.
+             */
             STRLEN len;
             char* i = SvPVx(val, len);
             return ( (len > 0 && i[0] != '-') ? TRUE : FALSE );
         case XSCON_TYPE_BASE_NUM:
-            // In Perl We Trust
+            /* In Perl We Trust */
             return looks_like_number(val);
         case XSCON_TYPE_BASE_PZNUM:
             if ( ! looks_like_number(val) ) {
@@ -952,7 +965,7 @@ xscon_check_type(char* keyname, SV* const val, int flags, CV* check_cv)
         case XSCON_TYPE_BASE_CLASSNAME:
             return _is_class_loaded(val);
         case 11:
-            // might use later
+            /* might use later */
             croak("PANIC!");
         case XSCON_TYPE_BASE_OBJECT:
             return IsObject(val);
@@ -961,12 +974,12 @@ xscon_check_type(char* keyname, SV* const val, int flags, CV* check_cv)
         case XSCON_TYPE_BASE_CODEREF:
             return IsCodeRef(val);
         case XSCON_TYPE_OTHER:
-            // Should have already been checked by if block at start of function.
+            /* Should have already been checked by if block at start of function. */
             croak("PANIC!");
         default:
-            // Should never happen
+            /* Should never happen */
             croak("PANIC!");
-    } // switch ( flags )
+    } /* switch ( flags ) */
 }
 
 SV*
@@ -1000,41 +1013,39 @@ xscon_run_default(SV *object, char* keyname, int has_common_default, SV *default
         return &PL_sv_no;
     }
 
-    // Coderef, call as method
+    /* Coderef, call as method */
     if (IsCodeRef( default_sv )) {
         dSP;
-        int count;
         ENTER;
         SAVETMPS;
         PUSHMARK(SP);
         EXTEND(SP, 1);
         PUSHs(object);
         PUTBACK;
-        count = call_sv((SV*)default_sv, G_SCALAR);
+        int count = call_sv((SV*)default_sv, G_SCALAR);
         SPAGAIN;
-        SV* got = POPs;
+        SV* got = count ? POPs : &PL_sv_undef;
         SV* val = newSVsv(got);
         FREETMPS;
         LEAVE;
         return val;
     }
 
-    // Scalarref to the name of a builder, call as method
+    /* Scalarref to the name of a builder, call as method */
     if (IsScalarRef(default_sv)) {
         STRLEN len;
         SV *method_name_sv = SvRV(default_sv);
         char *method_name = SvPV(method_name_sv, len);
         dSP;
-        int count;
         ENTER;
         SAVETMPS;
         PUSHMARK(SP);
         EXTEND(SP, 1);
         PUSHs(object);
         PUTBACK;
-        count = call_method(method_name, G_SCALAR);
+        int count = call_method(method_name, G_SCALAR);
         SPAGAIN;
-        SV* got = POPs;
+        SV* got = count ? POPs : &PL_sv_undef;
         SV* val = newSVsv(got);
         FREETMPS;
         LEAVE;
@@ -1149,7 +1160,7 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
         bool value_was_from_args = FALSE;
 
         if ( (!( flags & XSCON_FLAG_NO_INIT_ARG )) && init_arg_len >= 0 && hv_exists(args, init_arg, init_arg_len) ) {
-            // Value provided in args hash
+            /* Value provided in args hash */
             valref = hv_fetch(args, init_arg, init_arg_len, 0);
             val = newSVsv(*valref);
             has_value = TRUE;
@@ -1158,7 +1169,8 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
         }
 
         if ( flags & XSCON_FLAG_HAS_ALIASES ) {
-            for (I32 i = 0; i < param->num_aliases; i++) {
+            I32 i;
+            for (i = 0; i < param->num_aliases; i++) {
                 char *alias = param->aliases[i];
                 int alias_len = strlen(alias);
                 if ( hv_exists(args, alias, alias_len) ) {
@@ -1182,10 +1194,10 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
         }
 
         if ( !has_value && flags & XSCON_FLAG_HAS_DEFAULT ) {
-            // There is a default/builder
-            // Some very common defaults are worth hardcoding into the flags
-            // so we won't even need to do a hash lookup to find the default
-            // value.
+            /* There is a default/builder
+             * Some very common defaults are worth hardcoding into the flags
+             * so we won't need to do anything expensive to fill them in.
+             */
             I32 has_common_default = ( flags >> XSCON_BITSHIFT_DEFAULTS ) & 255;
             val = xscon_run_default( object, keyname, has_common_default, param->default_sv );
             has_value = TRUE;
@@ -1202,16 +1214,15 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
                 if ( flags & XSCON_FLAG_HAS_TYPE_COERCION && param->coercion_cv ) {
                     SV* newval;
                     dSP;
-                    int count;
                     ENTER;
                     SAVETMPS;
                     PUSHMARK(SP);
                     EXTEND(SP, 1);
                     PUSHs(val);
                     PUTBACK;
-                    count  = call_sv((SV *)param->coercion_cv, G_SCALAR);
+                    int count = call_sv((SV *)param->coercion_cv, G_SCALAR);
                     SPAGAIN;
-                    SV* tmpval = POPs;
+                    SV* tmpval = count ? POPs : &PL_sv_undef;
                     newval = newSVsv(tmpval);
                     FREETMPS;
                     LEAVE;
@@ -1235,7 +1246,6 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
                 if ( param->cloner_cv ) {
                     SV* newval;
                     dSP;
-                    int count;
                     ENTER;
                     SAVETMPS;
                     PUSHMARK(SP);
@@ -1244,9 +1254,9 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
                     PUSHs(newSVpv(keyname, keylen));
                     PUSHs(val);
                     PUTBACK;
-                    count = call_sv((SV *)param->cloner_cv, G_SCALAR);
+                    int count = call_sv((SV *)param->cloner_cv, G_SCALAR);
                     SPAGAIN;
-                    SV* tmpval = POPs;
+                    SV* tmpval = count ? POPs : val;
                     newval = newSVsv(tmpval);
                     FREETMPS;
                     LEAVE;
@@ -1268,7 +1278,6 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
             }
 
             if ( ( flags & XSCON_FLAG_HAS_SLOT_INITIALIZER ) && param->slot_initializer_cv ) {
-                int count;
                 dSP;
                 ENTER;
                 SAVETMPS;
@@ -1277,7 +1286,7 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
                 PUSHs(object);
                 PUSHs(val);
                 PUTBACK;
-                count = call_sv((SV *)param->slot_initializer_cv, G_VOID);
+                (void)call_sv((SV *)param->slot_initializer_cv, G_VOID);
                 SPAGAIN;
                 FREETMPS;
                 LEAVE;
@@ -1316,6 +1325,7 @@ xscon_buildall(const xscon_constructor_t* sig, const char* klass, SV* const obje
     assert(args);
 
     HV* args_hv = (HV *)SvRV(args);
+    I32 i;
 
     /* __no_BUILD__ support */
     if (hv_exists(args_hv, "__no_BUILD__", 12)) {
@@ -1329,7 +1339,7 @@ xscon_buildall(const xscon_constructor_t* sig, const char* klass, SV* const obje
     if ( strcmp(klass, sig->package) == 0 ) {
         if ( sig->num_build_methods <= 0 )
             return;
-        for (I32 i = 0; i < sig->num_build_methods; i++) {
+        for (i = 0; i < sig->num_build_methods; i++) {
             CV *cv = sig->build_methods[i];
             if (!cv)
                 continue;
@@ -1361,7 +1371,6 @@ xscon_buildall(const xscon_constructor_t* sig, const char* klass, SV* const obje
     SV** buildall = hv_fetch(buildall_hash, klass, klass_len, 0);
     
     if ( !buildall || !SvOK(*buildall) ) {
-        int count;
         ENTER;
         SAVETMPS;
         PUSHMARK(SP);
@@ -1369,7 +1378,7 @@ xscon_buildall(const xscon_constructor_t* sig, const char* klass, SV* const obje
         PUSHs(pkgsv);
         PUSHs(klasssv);
         PUTBACK;
-        count = call_pv("Class::XSConstructor::populate_build", G_VOID);
+        (void)call_pv("Class::XSConstructor::populate_build", G_VOID);
         PUTBACK;
         FREETMPS;
         LEAVE;
@@ -1388,7 +1397,6 @@ xscon_buildall(const xscon_constructor_t* sig, const char* klass, SV* const obje
     I32 const len = av_len(builds) + 1;
     SV** tmp;
     SV* build;
-    I32 i;
 
     for (i = 0; i < len; i++) {
         tmp = av_fetch(builds, i, 0);
@@ -1396,7 +1404,6 @@ xscon_buildall(const xscon_constructor_t* sig, const char* klass, SV* const obje
         build = *tmp;
         
         dSP;
-        int count;
         ENTER;
         SAVETMPS;
         PUSHMARK(SP);
@@ -1404,7 +1411,7 @@ xscon_buildall(const xscon_constructor_t* sig, const char* klass, SV* const obje
         PUSHs(object);
         PUSHs(args);
         PUTBACK;
-        count = call_sv(build, G_VOID);
+        (void)call_sv(build, G_VOID);
         PUTBACK;
         FREETMPS;
         LEAVE;
@@ -1418,11 +1425,13 @@ xscon_demolishall(const xscon_destructor_t* sig, const char* klass, SV* object, 
 
     assert(object);
 
+    I32 i, j;
+
     /* If we can take the fast route... */
     if ( strcmp(klass, sig->package) == 0 ) {
         if ( sig->num_demolish_methods <= 0 )
             return;
-        for (I32 i = 0; i < sig->num_demolish_methods; i++) {
+        for (i = 0; i < sig->num_demolish_methods; i++) {
             CV *cv = sig->demolish_methods[i];
             if (!cv)
                 continue;
@@ -1431,14 +1440,13 @@ xscon_demolishall(const xscon_destructor_t* sig, const char* klass, SV* object, 
             PUSHMARK(SP);
             EXTEND(SP, 2);
             PUSHs(object);
-            I32 i;
             I32 n = av_len(args);
-            for (i = 0; i <= n; i++) {
-                SV **svp = av_fetch(args, i, 0);
+            for (j = 0; j <= n; j++) {
+                SV **svp = av_fetch(args, j, 0);
                 XPUSHs(svp ? *svp : &PL_sv_undef);
             }
             PUTBACK;
-            call_sv((SV *)cv, use_eval ? ( G_VOID | G_EVAL ) : G_VOID);
+            (void)call_sv((SV *)cv, use_eval ? ( G_VOID | G_EVAL ) : G_VOID);
             FREETMPS;
             LEAVE;
         }
@@ -1460,7 +1468,6 @@ xscon_demolishall(const xscon_destructor_t* sig, const char* klass, SV* object, 
     SV** demolishall = hv_fetch(demolishall_hash, klass, klass_len, 0);
     
     if ( !demolishall || !SvOK(*demolishall) ) {
-        int count;
         ENTER;
         SAVETMPS;
         PUSHMARK(SP);
@@ -1468,7 +1475,7 @@ xscon_demolishall(const xscon_destructor_t* sig, const char* klass, SV* object, 
         PUSHs(pkgsv);
         PUSHs(klasssv);
         PUTBACK;
-        count = call_pv("Class::XSConstructor::populate_demolish", G_VOID);
+        (void)call_pv("Class::XSConstructor::populate_demolish", G_VOID);
         PUTBACK;
         FREETMPS;
         LEAVE;
@@ -1488,7 +1495,6 @@ xscon_demolishall(const xscon_destructor_t* sig, const char* klass, SV* object, 
     I32 const len = av_len(demolishes) + 1;
     SV** tmp;
     SV* demolish;
-    I32 i;
 
     for (i = 0; i < len; i++) {
         tmp = av_fetch(demolishes, i, 0);
@@ -1496,20 +1502,18 @@ xscon_demolishall(const xscon_destructor_t* sig, const char* klass, SV* object, 
         demolish = *tmp;
         
         dSP;
-        int count;
         ENTER;
         SAVETMPS;
         PUSHMARK(SP);
         EXTEND(SP, 2);
         PUSHs(object);
-        I32 i;
         I32 n = av_len(args);
-        for (i = 0; i <= n; i++) {
-            SV **svp = av_fetch(args, i, 0);
+        for (j = 0; j <= n; j++) {
+            SV **svp = av_fetch(args, j, 0);
             XPUSHs(svp ? *svp : &PL_sv_undef);
         }
         PUTBACK;
-        count = call_sv(demolish, use_eval ? ( G_VOID | G_EVAL ) : G_VOID);
+        (void)call_sv(demolish, use_eval ? ( G_VOID | G_EVAL ) : G_VOID);
         PUTBACK;
         FREETMPS;
         LEAVE;
@@ -1531,6 +1535,7 @@ xscon_strictcon(const xscon_constructor_t* sig, const char* klassname, SV* const
 
     HV* argshv = (HV*)SvRV(args);
     HE* he;
+    I32 i;
 
     hv_iterinit(argshv);
     while ((he = hv_iternext(argshv))) {
@@ -1539,7 +1544,6 @@ xscon_strictcon(const xscon_constructor_t* sig, const char* klassname, SV* const
         char *k_str = SvPV(k, k_len);
         bool found = FALSE;
 
-        I32 i;
         for (i = 0; i < sig->num_allow; i++) {
             if (k_len == strlen(sig->allow[i]) && memcmp(k_str, sig->allow[i], k_len) == 0) {
                 found = TRUE;
@@ -1621,11 +1625,12 @@ new_object(SV* klass, ...)
 CODE:
 {
     dTHX;
-    dSP;
+    /* dSP; */
 
     const char* klassname;
     SV* args;
     SV* object;
+    I32 i;
 
     xscon_constructor_t *sig = (xscon_constructor_t *) CvXSUBANY(cv).any_ptr;
     if (sig->is_placeholder) xscon_constructor_get_metadata(NULL, sig);
@@ -1639,7 +1644,7 @@ CODE:
         if ( sig->foreignbuildargs_cv ) {
             /* @fbargs = scalar $foreign->BUILDARGS( @_ ) */
             AV *av = newAV();
-            for (I32 i = 0; i < items; i++) {
+            for (i = 0; i < items; i++) {
                 av_push(av, newSVsv(ST(i)));
             }
             AV* fbargs = xscon_foreignbuildargs(sig, klassname, av, G_SCALAR);
@@ -1679,7 +1684,7 @@ CODE:
     else if ( sig->foreignconstructor_cv ) {
         /* @fbargs = $klassname->can('FOREIGNBUILDARGS') ? $klassname->FOREIGNBUILDARGS( @_ ) : @_ */
         AV *av = newAV();
-        for (I32 i = 0; i < items; i++) {
+        for (i = 0; i < items; i++) {
             av_push(av, newSVsv(ST(i)));
         }
         AV* fbargs = xscon_foreignbuildargs(sig, klassname, av, G_ARRAY);
@@ -1779,7 +1784,8 @@ CODE:
     
     const char* klassname = SvROK(object) ? sv_reftype(SvRV(object), 1) : SvPV_nolen_const(object);
     AV* args = newAV();
-    for (I32 i = 1; i < items; i++) {
+    I32 i;
+    for (i = 1; i < items; i++) {
         av_push(args, newSVsv(ST(i)));
     }
     xscon_demolishall(sig, klassname, object, FALSE, args);
@@ -1817,17 +1823,15 @@ CODE:
         if ( sig->has_check && !xscon_check_type(sig->slot, newSVsv(val), sig->check_flags, sig->check_cv) ) {
             if ( sig->has_coercion ) {
                 SV* newval;
-                int count;
-                dSP;
                 ENTER;
                 SAVETMPS;
                 PUSHMARK(SP);
                 EXTEND(SP, 1);
                 PUSHs(val);
                 PUTBACK;
-                count  = call_sv((SV *)sig->coercion_cv, G_SCALAR);
+                int count = call_sv((SV *)sig->coercion_cv, G_SCALAR);
                 SPAGAIN;
-                SV* tmpval = POPs;
+                SV* tmpval = count ? POPs : &PL_sv_undef;
                 newval = newSVsv(tmpval);
                 FREETMPS;
                 LEAVE;
@@ -1859,7 +1863,6 @@ CODE:
     else if ( sig->should_clone ) {
         SV* newval;
         dSP;
-        int count;
         ENTER;
         SAVETMPS;
         PUSHMARK(SP);
@@ -1868,9 +1871,9 @@ CODE:
         PUSHs(newSVpv(sig->slot, 0));
         PUSHs(val);
         PUTBACK;
-        count = call_sv((SV *)sig->cloner_cv, G_SCALAR);
+        int count = call_sv((SV *)sig->cloner_cv, G_SCALAR);
         SPAGAIN;
-        SV* tmpval = POPs;
+        SV* tmpval = count ? POPs : val;
         newval = newSVsv(tmpval);
         FREETMPS;
         LEAVE;
@@ -1903,16 +1906,17 @@ CODE:
     
     I32 gimme = GIMME_V;
     bool inc = FALSE;
-    
+
     I32 nargs = items - 1;
     AV *args = newAV();
-    for ( I32 i = 0; i < nargs; i++ ) {
+    I32 i;
+    for ( i = 0; i < nargs; i++ ) {
         SV *arg = ST( i + 1 );
         av_push( args, arg );
     }
-    
+
     xscon_delegation_t *sig = (xscon_delegation_t *) CvXSUBANY(cv).any_ptr;
-    
+
     /* Get handler object */
     SV* handler;
     if ( sig->is_accessor ) {
@@ -1927,7 +1931,7 @@ CODE:
         if (SvTRUE(ERRSV)) croak(NULL);
         
         SPAGAIN;
-        handler = POPs;
+        handler = count ? POPs : &PL_sv_undef;
         if ( handler != &PL_sv_undef ) {
             SvREFCNT_inc(handler);
             inc = TRUE;
@@ -1947,7 +1951,7 @@ CODE:
             inc = TRUE;
         }
     }
-    
+
     if ( !IsObject(handler) ) {
         if ( sig->is_try ) {
             ST(0) = &PL_sv_undef;
@@ -1959,26 +1963,26 @@ CODE:
             ( handler == &PL_sv_undef ) ? "undef" : SvPV_nolen(handler)
         );
     }
-    
+
     SP = MARK;
     
     ENTER;
     SAVETMPS;
-    
+
     PUSHMARK(SP);
     XPUSHs(handler);
     
     /* add curried arguments */
     if ( sig->has_curried ) {
         I32 n = av_len(sig->curried) + 1;
-        for (I32 i = 0; i < n; i++) {
+        for (i = 0; i < n; i++) {
             SV **svp = av_fetch(sig->curried, i, 0);
             XPUSHs( svp ? *svp : &PL_sv_undef );
         }
     }
     
     /* forward all arguments except $object */
-    for (I32 i = 0; i < nargs; i++) {
+    for (i = 0; i < nargs; i++) {
         SV **svp = av_fetch(args, i, 0);
         XPUSHs( svp ? *svp : &PL_sv_undef );
     }
@@ -2013,7 +2017,8 @@ CODE:
 
     char *full = savepv(name);
     const char *last = NULL;
-    for (const char *p = full; (p = strstr(p, "::")); p += 2) {
+    char *p;
+    for (p = full; (p = strstr(p, "::")); p += 2) {
         last = p;
     }
     char *pkg;
@@ -2055,7 +2060,8 @@ CODE:
 
     char *full = savepv(name);
     const char *last = NULL;
-    for (const char *p = full; (p = strstr(p, "::")); p += 2) {
+    char *p;
+    for (p = full; (p = strstr(p, "::")); p += 2) {
         last = p;
     }
     char *pkg;

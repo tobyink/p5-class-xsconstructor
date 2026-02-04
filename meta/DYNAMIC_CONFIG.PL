@@ -9,6 +9,19 @@ if (eval "use Devel::PPPort 3.42; 1") {
 	Devel::PPPort::WriteFile();
 }
 
-%dynamic_config = (
-	OBJECT => '$(O_FILES)',
-);
+$dynamic_config{OBJECT} ='$(O_FILES)';
+
+my $STRICT;
+$STRICT++ if ( $ENV{GITHUB_REPOSITORY} and $ENV{GITHUB_REPOSITORY} =~ /p5-class-xsconstructor/ );
+$STRICT++ if ( $ENV{EXTENDED_TESTING}  and $ENV{USER} and $ENV{USER} eq 'tai' );
+$STRICT++ if ( $ENV{PERL_XS_STRICTC89} );
+if ( $STRICT ) {
+	require Config;
+	my $SPACE = q{ };
+	$dynamic_config{CCFLAGS} = join $SPACE => (
+		$Config::Config{ccflags},
+		'-std=c89',
+		'-Wall',
+		'-Werror',
+	);
+}

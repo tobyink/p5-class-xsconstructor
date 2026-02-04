@@ -22,7 +22,7 @@ do {                                                                   \
 static SV *hv_clone (pTHX_ SV *, SV *, HV *, int);
 static SV *av_clone (pTHX_ SV *, SV *, HV *, int);
 static SV *sv_clone (pTHX_ SV *, HV *, int);
-static SV *rv_clone (pTHX_ SV *, HV *, int);
+/* static SV *rv_clone (pTHX_ SV *, HV *, int); */
 
 #ifdef DEBUG_CLONE
 #define TRACEME(a) printf("%s:%d: ",__FUNCTION__, __LINE__) && printf a;
@@ -57,7 +57,6 @@ av_clone (pTHX_ SV * ref, SV * target, HV* hseen, int depth) {
     AV *clone = (AV *) target;
     AV *self = (AV *) ref;
     SV **svp;
-    SV *val = NULL;
     I32 arrlen = 0;
     int i = 0;
     int recur = depth ? depth - 1 : 0;
@@ -83,10 +82,10 @@ av_clone (pTHX_ SV * ref, SV * target, HV* hseen, int depth) {
     return (SV *) clone;
 }
 
+/*
 static SV *
 rv_clone (pTHX_ SV * ref, HV* hseen, int depth) {
     SV *clone = NULL;
-    SV *rv = NULL;
 
     assert(SvROK(ref));
 
@@ -104,6 +103,7 @@ rv_clone (pTHX_ SV * ref, HV* hseen, int depth) {
     TRACEME(("clone = 0x%x(%d)\n", clone, SvREFCNT(clone)));
     return clone;
 }
+*/
 
 static SV *
 sv_clone (pTHX_ SV * ref, HV* hseen, int depth) {
@@ -253,7 +253,7 @@ sv_clone (pTHX_ SV * ref, HV* hseen, int depth) {
     /* 1: TIED */
     if (SvMAGICAL(ref)) {
         MAGIC* mg;
-        MGVTBL *vtable = 0;
+        /* MGVTBL *vtable = 0; */
 
         for (mg = SvMAGIC(ref); mg; mg = mg->mg_moremagic) {
             SV *obj = (SV *) NULL;
@@ -297,7 +297,7 @@ sv_clone (pTHX_ SV * ref, HV* hseen, int depth) {
                     /* let's share the SV for now */
                     SvREFCNT_inc((SV*)mg->mg_ptr);
                     /* maybe we also want to clone the SV... */
-                    //if (mg_ptr) mg->mg_ptr = (char*) sv_clone((SV*)mg->mg_ptr, hseen, -1);
+                    /* if (mg_ptr) mg->mg_ptr = (char*) sv_clone((SV*)mg->mg_ptr, hseen, -1); */
                 }
                 else if (mg->mg_len == -1 && mg->mg_type == PERL_MAGIC_utf8) { /* copy the cache */
                     if (mg->mg_ptr) {
