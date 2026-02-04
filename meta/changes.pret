@@ -246,3 +246,9 @@
 	changeset [
 		item "Fix for a C operator precedence issue that was causing certain optimized code paths to be ignored."^^Bugfix;
 	].
+
+`Class-XSConstructor 0.023003 cpan:TOBYINK`
+	issued  2026-02-04;
+	changeset [
+		item "Make all the C code C89-compliant."^^Bugfix;
+	].
