@@ -89,8 +89,13 @@ extern "C" {
 #define LooksLikeNumber(x) (SvPOKp(x) ? looks_like_number(x) : (I32)SvNIOKp(x))
 #endif
 
+#ifndef newAV_mortal
 #define newAV_mortal() (AV*)sv_2mortal((SV*)newAV())
+#endif
+
+#ifndef newHV_mortal
 #define newHV_mortal() (HV*)sv_2mortal((SV*)newHV())
+#endif
 
 #define DECL_BOOT(name) EXTERN_C XS(CAT2(boot_, name))
 #define CALL_BOOT(name) STMT_START {            \
