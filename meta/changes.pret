@@ -252,3 +252,9 @@
 	changeset [
 		item "Make all the C code C89-compliant."^^Bugfix;
 	].
+
+`Class-XSConstructor 0.023004 cpan:TOBYINK`
+	issued  2026-02-04;
+	changeset [
+		item "Avoid redefining newAV_mortal macro."^^Bugfix;
+	].

@@ -6,7 +6,7 @@ use Class::XSConstructor ();
 package Class::XSDelegation;
 
 our $AUTHORITY = 'cpan:TOBYINK';
-our $VERSION   = '0.023003';
+our $VERSION   = '0.023004';
 
 sub import {
 	my $class = shift;
