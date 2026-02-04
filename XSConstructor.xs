@@ -743,7 +743,7 @@ _S_nv_is_integer (NV const nv) {
     }
     else {
         char buf[64];  /* Must fit sprintf/Gconvert of longest NV */
-        char *ignored = Gconvert(nv, NV_DIG, 0, buf);
+        intptr_t ignored = (intptr_t)Gconvert(nv, NV_DIG, 0, buf);
         (void)ignored;
         return _S_pv_is_integer(buf);
     }
