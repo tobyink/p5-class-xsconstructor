@@ -264,3 +264,9 @@
 	changeset [
 		item "More C89 fixes."^^Bugfix;
 	].
+
+`Class-XSConstructor 0.023006 cpan:TOBYINK`
+	issued  2026-02-13;
+	changeset [
+		item "Adopt upstream Clone fixes and improvements."^^Bugfix;
+	].

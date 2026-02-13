@@ -34,11 +34,11 @@ do {                                                                   \
     SvREFCNT_dec( (SV *)(weakrefs) );                                  \
 } while (0)
 
-static SV *hv_clone (SV *, SV *, HV *, int, int, AV *);
-static SV *av_clone (SV *, SV *, HV *, int, int, AV *);
-static SV *sv_clone (SV *, HV *, int, int, AV *);
-/* static SV *rv_clone (SV *, HV *, int, int, AV *); */
-static SV *av_clone_iterative(SV *, HV *, int, AV *);
+static SV *hv_clone (pTHX_ SV *, SV *, HV *, int, int, AV *);
+static SV *av_clone (pTHX_ SV *, SV *, HV *, int, int, AV *);
+static SV *sv_clone (pTHX_ SV *, HV *, int, int, AV *);
+/* static SV *rv_clone (pTHX_ SV *, HV *, int, int, AV *); */
+static SV *av_clone_iterative(pTHX_ SV *, HV *, int, AV *);
 
 #ifdef DEBUG_CLONE
 #define TRACEME(a) printf("%s:%d: ",__FUNCTION__, __LINE__) && printf a;
@@ -120,7 +120,7 @@ av_clone_iterative (pTHX_ SV* ref, HV* hseen, int rdepth, AV* weakrefs) {
             /* Handle the final element if it exists */
             if ( current ) {
                 if ( SvROK(current) ) {
-                    av_store( clone, 0, sv_clone(current, hseen, 1, rdepth, weakrefs) );
+                    av_store( clone, 0, sv_clone(aTHX_ current, hseen, 1, rdepth, weakrefs) );
                 }
                 else {
                     av_store( clone, 0, newSVsv(current) );
@@ -129,7 +129,7 @@ av_clone_iterative (pTHX_ SV* ref, HV* hseen, int rdepth, AV* weakrefs) {
         }
         else if ( elem ) {
             /* Handle single non-array element */
-            av_store( clone, 0, sv_clone( *elem, hseen, 1, rdepth, weakrefs ) );
+            av_store( clone, 0, sv_clone( aTHX_ *elem, hseen, 1, rdepth, weakrefs ) );
         }
     }
     else {
@@ -140,7 +140,7 @@ av_clone_iterative (pTHX_ SV* ref, HV* hseen, int rdepth, AV* weakrefs) {
         for ( i = 0; i <= arrlen; i++ ) {
             SV **svp = av_fetch( self, i, 0 );
             if ( svp ) {
-                SV *new_sv = sv_clone( *svp, hseen, 1, rdepth, weakrefs );
+                SV *new_sv = sv_clone( aTHX_ *svp, hseen, 1, rdepth, weakrefs );
                 if ( ! av_store( clone, i, new_sv ) ) {
                     SvREFCNT_dec(new_sv);
                 }
@@ -155,7 +155,7 @@ av_clone (pTHX_ SV* ref, SV* target, HV* hseen, int depth, int rdepth, AV* weakr
 {
     /* For very deep structures, use the iterative approach */
     if ( depth == 0 ) {
-        return av_clone_iterative( ref, hseen, rdepth, weakrefs );
+        return av_clone_iterative( aTHX_ ref, hseen, rdepth, weakrefs );
     }
 
     AV *clone = (AV *) target;
@@ -175,7 +175,7 @@ av_clone (pTHX_ SV* ref, SV* target, HV* hseen, int depth, int rdepth, AV* weakr
     for ( i = 0; i <= arrlen; i++ ) {
         svp = av_fetch( self, i, 0 );
         if (svp) {
-            SV *new_sv = sv_clone( *svp, hseen, recur, rdepth, weakrefs );
+            SV *new_sv = sv_clone( aTHX_ *svp, hseen, recur, rdepth, weakrefs );
             if ( ! av_store( clone, i, new_sv ) ) {
                 SvREFCNT_dec(new_sv);
             }
@@ -218,7 +218,7 @@ sv_clone (pTHX_ SV* ref, HV* hseen, int depth, int rdepth, AV* weakrefs) {
     /* Check for deep recursion and switch to iterative mode */
     if ( rdepth > MAX_DEPTH ) {
         if ( SvTYPE(ref) == SVt_PVAV ) {
-            return av_clone_iterative( ref, hseen, rdepth, weakrefs );
+            return av_clone_iterative( aTHX_ ref, hseen, rdepth, weakrefs );
         }
         /* For other types, just return a reference to avoid stack overflow */
         return SvREFCNT_inc(ref);
@@ -467,7 +467,7 @@ sv_clone (pTHX_ SV* ref, HV* hseen, int depth, int rdepth, AV* weakrefs) {
                     /* let's share the SV for now */
                     SvREFCNT_inc( (SV*)mg->mg_ptr );
                     /* maybe we also want to clone the SV... */
-                    /* if (mg_ptr) mg->mg_ptr = (char*) sv_clone((SV*)mg->mg_ptr, hseen, -1); */
+                    /* if (mg_ptr) mg->mg_ptr = (char*) sv_clone(aTHX_ (SV*)mg->mg_ptr, hseen, -1); */
                 }
                 else if ( mg->mg_len == -1 && mg->mg_type == PERL_MAGIC_utf8 ) { /* copy the cache */
                     if ( mg->mg_ptr ) {
