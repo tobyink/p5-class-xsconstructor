@@ -1143,6 +1143,9 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
     I32 i;
     int used = 0;
 
+    /* we can weaken everything at the end */
+    AV *weakrefs = NULL;
+
     /* copy allowed attributes */
     for (i = 0; i < sig->num_params; i++) {
         xscon_param_t *param = &sig->params[i];
@@ -1271,7 +1274,8 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
                 }
                 else {
                     HV *hseen = newHV();
-                    SV *newval = sv_clone(aTHX_ val, hseen, -1);
+                    if ( weakrefs == NULL ) weakrefs = newAV();
+                    SV *newval = sv_clone(aTHX_ val, hseen, -1, 0, weakrefs);
                     hv_clear(hseen);
                     SvREFCNT_dec((SV *)hseen);
                     val = newval;
@@ -1301,7 +1305,8 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
             }
             
             if ( SvROK(val) && flags & XSCON_FLAG_WEAKEN ) {
-                sv_rvweaken(val);
+                if ( weakrefs == NULL ) weakrefs = newAV();
+                PUSH_WEAKREFS( weakrefs, val );
             }
         }
         else if ( flags & XSCON_FLAG_REQUIRED ) {
@@ -1313,7 +1318,9 @@ xscon_initialize_object(const xscon_constructor_t* sig, const char* klass, SV* c
             }
         }
     }
-    
+
+    if ( weakrefs ) HANDLE_WEAKREFS( weakrefs );
+
     return used;
 }
 
@@ -1856,7 +1863,9 @@ CODE:
 
     if ( sig->should_clone && sig->cloner_cv == NULL ) {
         HV *hseen = newHV();
-        SV *newval = sv_clone(aTHX_ val, hseen, -1);
+        AV *weakrefs = newAV();
+        SV *newval = sv_clone(aTHX_ val, hseen, -1, 0, weakrefs);
+        HANDLE_WEAKREFS( weakrefs );
         hv_clear(hseen);
         SvREFCNT_dec((SV *)hseen);
         ST(0) = newval;
@@ -2176,9 +2185,14 @@ clone(self, depth=-1)
     PREINIT:
     SV *clone = &PL_sv_undef;
     HV *hseen = newHV();
+    AV *weakrefs = newAV();
     PPCODE:
     TRACEME(("ref = 0x%x\n", self));
-    clone = sv_clone(aTHX_ self, hseen, depth);
+    clone = sv_clone( aTHX_ self, hseen, depth, 0, weakrefs );
+    /* Now apply deferred weakening.
+     * All strong references in the clone graph are established,
+     * so it is safe to weaken references without destroying referents. */
+    HANDLE_WEAKREFS( weakrefs );
     hv_clear(hseen);  /* Free HV */
     SvREFCNT_dec((SV *)hseen);
     EXTEND(SP,1);
